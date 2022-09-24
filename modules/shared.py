@@ -66,18 +66,41 @@ parallel_processing_allowed = not cmd_opts.lowvram and not cmd_opts.medvram
 
 config_filename = cmd_opts.ui_settings_file
 
-
-class State:
+class State():
     interrupted = False
     job = ""
     job_no = 0
     job_count = 0
     job_timestamp = '0'
-    sampling_step = 0
+    _sampling_step = 0
     sampling_steps = 0
     current_latent = None
     current_image = None
     current_image_sampling_step = 0
+    
+    listeners = []
+    
+    def register_listener(self, listener):
+        self.listeners.append(listener)
+        
+    def clear_listeners(self):
+        self.listeners = []        
+    
+    @property
+    def sampling_step(self):
+        return self._sampling_step
+
+    @sampling_step.setter
+    def sampling_step(self, value):
+        if value != self._sampling_step:
+            for listener in self.listeners:
+                listener()
+        self._sampling_step = value
+
+    @sampling_step.deleter
+    def sampling_step(self):
+        del self._sampling_step
+    
 
     def interrupt(self):
         self.interrupted = True

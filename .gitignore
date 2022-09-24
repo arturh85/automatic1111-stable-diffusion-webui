@@ -5,6 +5,7 @@ __pycache__
 /SwinIR/*
 /repositories
 /venv
+/venv_linux
 /tmp
 /model.ckpt
 /models/**/*
@@ -25,3 +26,5 @@ __pycache__
 /.idea
 notification.mp3
 /SwinIR
+/models/*.ckpt
+/ESRGAN/*.pth

@@ -1,0 +1,13 @@
+/__pycache__/
+/.github/
+/outputs/
+/repositories/
+/models/
+!/models/Stable-diffusion/
+/tmp/
+/venv/
+/.dockerignore
+/Dockerfile
+/*.cmd
+/*.bat
+/*.md

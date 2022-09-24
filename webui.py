@@ -103,6 +103,5 @@ def webui():
         inbrowser=cmd_opts.autolaunch,
     )
 
-
 if __name__ == "__main__":
     webui()

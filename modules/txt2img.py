@@ -35,6 +35,8 @@ def txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2:
     )
 
     print(f"\ntxt2img: {prompt}", file=shared.progress_print_out)
+    print("DEBUG", args)
+    # DEBUG (3, False, False, None, '', 1, '1000,1001', 7, 'Euler,LMS', True, False)
     processed = modules.scripts.scripts_txt2img.run(p, *args)
 
     if processed is None:
