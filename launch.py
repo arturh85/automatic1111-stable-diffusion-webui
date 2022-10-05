@@ -137,9 +137,9 @@ if "--exit" in args:
 
 def start_webui():
     print(f"Launching Web UI with arguments: {' '.join(sys.argv[1:])}")
+    import webui
     import webapi
     webapi.webapi()
-    import webui
     webui.webui()
 
 if not install_mode:

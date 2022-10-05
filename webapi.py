@@ -372,7 +372,7 @@ def img2img():
             maskImage = request_data["maskImage"]
             if maskImage != "":
                 if maskImage.startswith('data:'):
-                    base64_data = re.sub('^data:image/.+;base64,', '', mask_url)
+                    base64_data = re.sub('^data:image/.+;base64,', '', maskImage)
                     im_bytes = base64.b64decode(base64_data) 
                     image_data = BytesIO(im_bytes)
                     mask_info = Image.open(image_data)
