@@ -28,3 +28,4 @@ notification.mp3
 /SwinIR
 /models/*.ckpt
 /ESRGAN/*.pth
+/textual_inversion

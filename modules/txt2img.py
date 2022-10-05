@@ -34,9 +34,10 @@ def txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2:
         denoising_strength=denoising_strength if enable_hr else None,
     )
 
-    print(f"\ntxt2img: {prompt}", file=shared.progress_print_out)
-    print("DEBUG", args)
     # DEBUG (3, False, False, None, '', 1, '1000,1001', 7, 'Euler,LMS', True, False)
+    if cmd_opts.enable_console_prompts:
+        print(f"\ntxt2img: {prompt}", file=shared.progress_print_out)
+
     processed = modules.scripts.scripts_txt2img.run(p, *args)
 
     if processed is None:
@@ -47,6 +48,9 @@ def txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2:
     generation_info_js = processed.js()
     if opts.samples_log_stdout:
         print(generation_info_js)
+
+    if opts.do_not_show_images:
+        processed.images = []
 
     return processed.images, generation_info_js, plaintext_to_html(processed.info)
 
