@@ -262,10 +262,10 @@ def list_endpoints():
 @api.route('/api/txt2img', methods=['POST'])
 def txt2img():
     global is_generating
-    if is_generating:
-        return 'already generating', 500
     if not shared.sd_model:
         return 'still booting up', 500
+    if is_generating:
+        return 'already generating', 500
     try:
         args = request.args        
         request_data: Any = request.get_json()
@@ -326,10 +326,10 @@ def txt2img():
             "seed": str(seed),
             "stats": stats,
         }
-    except RuntimeError as err:
-        print("runtime error", err)
+    except BaseException as err:
+        print("error", err)
         is_generating = None
-        return "{0}".format(err), 500
+        return "Error: {0}".format(err), 500
     
 
 @api.route('/api/img2img', methods=['POST'])
@@ -452,10 +452,10 @@ def img2img():
             "seed": str(seed),
             "stats": stats,
         }
-    except RuntimeError as err:
-        print("runtime error", err)
+    except BaseException as err:
+        print("error", err)
         is_generating = None
-        return "Runtime error: {0}".format(err)
+        return "Error: {0}".format(err), 500
     
 
 @api.route('/api/upscale', methods=['POST'])
@@ -527,10 +527,10 @@ def upscale():
             "generatedImage": encoded_images[0],
             "stats": stats,
         }
-    except RuntimeError as err:
-        print("runtime error", err)
+    except BaseException as err:
+        print("error", err)
         is_generating = None
-        return "Runtime error: {0}".format(err)
+        return "Error: {0}".format(err), 500
     
         
 @api.route('/api/img2prompt', methods=['POST'])
@@ -565,10 +565,10 @@ def img2prompt():
         return {
             "generatedPrompt": prompt
         }
-    except RuntimeError as err:
-        print("runtime error", err)
+    except BaseException as err:
+        print("error", err)
         is_generating = None
-        return "Runtime error: {0}".format(err)
+        return "Error: {0}".format(err), 500
     
         
 def webapi():

@@ -20,6 +20,7 @@ COPY --chown=pyuser javascript/ /app/javascript/
 COPY --chown=pyuser modules/ /app/modules/
 COPY --chown=pyuser scripts/ /app/scripts/
 COPY --chown=pyuser *.py /app/
+COPY --chown=pyuser textual_inversion_templates/ /app/textual_inversion_templates/
 ENV GRADIO_SERVER_PORT=7860
 ENV GRADIO_SERVER_NAME=0.0.0.0
 EXPOSE 7860

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+PATH=/opt/conda/bin:$PATH
 if [[ -f webui-user.sh ]]
 then
     source ./webui-user.sh
@@ -29,4 +30,4 @@ delimiter="################################################################"
 printf "\n%s\n" "${delimiter}"
 printf "Launching launch.py..."
 printf "\n%s\n" "${delimiter}"
-"${python_cmd}" launch.py --no-half --precision full
+"${python_cmd}" launch.py --no-half --precision full --listen
