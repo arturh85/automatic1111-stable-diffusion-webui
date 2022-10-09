@@ -1,4 +1,4 @@
-import json, re, base64, random, requests
+import json, re, base64, random, requests, os, traceback
 from flask import Flask, json, request
 from flask_cors import CORS
 from flask_sock import Sock
@@ -14,7 +14,12 @@ import modules.sd_samplers
 
 api = Flask(__name__)
 api.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
-api.config['SECRET_KEY'] = 'QzBFr3yuPeSBaEngJyagGPqRakIhjDSz'
+
+webapi_secret = os.getenv('WEBAPI_SECRET', None)
+if webapi_secret != None:
+    print("Starting with Webapi Secret: " + webapi_secret)
+else:
+    print("Starting without Webapi Secret")
 
 sock = Sock(api)
 CORS(api)
@@ -32,21 +37,29 @@ def send_update(ws):
     }, sort_keys=True, indent=4))
 
 @sock.route('/events')
-
-
 def echo(ws):
     try:
         while True:
             shared.state.register_listener(lambda: send_update(ws))
-            data = ws.receive()
+            data = ws.receive().strip()
             if data == 'close':
                 break
-            send_update(ws)
+            elif data == '"status"':
+                send_update(ws)
+            elif data == '"abort"':
+                shared.state.interrupt()
+            else:
+                print("Unknown WS message: " + data)
     finally:
         shared.state.clear_listeners()
 
 @api.route('/api/endpoints', methods=['GET'])
 def list_endpoints():
+    global webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        print("got" + request.headers.get('webapi-secret', "none"))
+        return 'wrong secret', 401
+    
     samplers = {}
     for sampler in map(lambda x: x.name, modules.sd_samplers.samplers):
         samplers[sampler] = sampler
@@ -261,7 +274,9 @@ def list_endpoints():
 
 @api.route('/api/txt2img', methods=['POST'])
 def txt2img():
-    global is_generating
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
     if not shared.sd_model:
         return 'still booting up', 500
     if is_generating:
@@ -308,33 +323,39 @@ def txt2img():
         # cfg_scale: float, seed: int, subseed: int, subseed_strength: float, seed_resize_from_h: int, 
         # seed_resize_from_w: int, seed_enable_extras: bool, height: int, width: int, enable_hr: bool, 
         # scale_latent: bool, denoising_strength: float, *args):
+        shared.state.interrupted = False
         images, generation_info_js, stats = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style, prompt_style2, steps, 
                                 sampler_index, restore_faces, tiling, n_iter, batch_size, 
                                 cfg_scale, seed, subseed, subseed_strength, seed_resize_from_h,
                                 seed_resize_from_w, seed_enable_extras, height, width, enable_hr, 
                                 scale_latent, denoising_strength, script_args)
         is_generating = None
-        encoded_images = []
+        encoded_image = None
         for image in images:
             buffered = BytesIO()
             image.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue())
             img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
-            encoded_images.append(img_base64.decode("utf-8"))
+            encoded_image = img_base64.decode("utf-8")
+            break
+        print("done ", encoded_image)
         return {
-            "generatedImage": encoded_images[0],
+            "generatedImage": encoded_image,
             "seed": str(seed),
             "stats": stats,
         }
     except BaseException as err:
         print("error", err)
+        print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
     
 
 @api.route('/api/img2img', methods=['POST'])
 def img2img():
-    global is_generating
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
     if is_generating:
         return 'already generating', 500
     if not shared.sd_model:
@@ -432,6 +453,7 @@ def img2img():
         # seed_enable_extras: bool, height: int, width: int, resize_mode: int, inpaint_full_res: bool,
         # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
         # img2img_batch_output_dir: str, *args
+        shared.state.interrupted = False
         images, generation_info_js, stats = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style, prompt_style2, init_img, 
                                 init_img_with_mask, init_img_inpaint, init_mask_inpaint, mask_mode, steps, 
                                 sampler_index, mask_blur, inpainting_fill, restore_faces, tiling, n_iter, batch_size, 
@@ -440,27 +462,31 @@ def img2img():
                                 inpaint_full_res_padding,  inpainting_mask_invert, img2img_batch_input_dir,
                                 img2img_batch_output_dir, scale_latent, script_args)
         is_generating = None
-        encoded_images = []
+        encoded_image = None
         for image in images:
             buffered = BytesIO()
             image.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue())
             img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
-            encoded_images.append(img_base64.decode("utf-8"))
+            encoded_image = img_base64.decode("utf-8")
+            break
         return {
-            "generatedImage": encoded_images[0],
+            "generatedImage": encoded_image,
             "seed": str(seed),
             "stats": stats,
         }
     except BaseException as err:
         print("error", err)
+        print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
     
 
 @api.route('/api/upscale', methods=['POST'])
 def upscale():
-    global is_generating
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
     if is_generating:
         return 'already generating', 500
     if not shared.sd_model:
@@ -512,30 +538,35 @@ def upscale():
         # codeformer_weight, upscaling_resize, extras_upscaler_1, extras_upscaler_2, 
         # extras_upscaler_2_visibility
         
+        shared.state.interrupted = False
         images, generation_info_js, stats = modules.extras.run_extras(extras_mode, init_img, 
                         image_folder, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
                         upscaling_resize, extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
         is_generating = None
-        encoded_images = []
+        encoded_image = None
         for image in images:
             buffered = BytesIO()
             image.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue())
             img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
-            encoded_images.append(img_base64.decode("utf-8"))
+            encoded_image = img_base64.decode("utf-8")
+            break
         return {
-            "generatedImage": encoded_images[0],
+            "generatedImage": encoded_image,
             "stats": stats,
         }
     except BaseException as err:
         print("error", err)
+        print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
     
         
 @api.route('/api/img2prompt', methods=['POST'])
 def img2prompt():
-    global is_generating
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
     if is_generating:
         return 'already generating', 500
     if not shared.sd_model:
@@ -560,6 +591,7 @@ def img2prompt():
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content)).convert('RGB')
         
+        shared.state.interrupted = False
         prompt = shared.interrogator.interrogate(init_img)
         is_generating = None
         return {
@@ -567,6 +599,7 @@ def img2prompt():
         }
     except BaseException as err:
         print("error", err)
+        print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
     
@@ -575,6 +608,7 @@ def webapi():
     import threading
     threading.Thread(target=lambda: api.run(host="0.0.0.0", port=42587, debug=True, use_reloader=False, ssl_context='adhoc')).start()
 
+# source: https://github.com/sd-webui/stable-diffusion-webui/blob/72fb6ffe1fc76b668c822f7a2cc0934dc7bd08af/scripts/webui.py
 def seed_to_int(s):
     if type(s) is int:
         return s
