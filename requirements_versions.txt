@@ -25,3 +25,4 @@ Flask==2.2.2
 Flask-Cors==3.0.10
 flask-sock==0.5.2
 lark==1.1.2
+functorch==0.2.1
