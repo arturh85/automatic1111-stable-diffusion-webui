@@ -1,8 +1,8 @@
 FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y git ffmpeg libsm6 libxext6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git ffmpeg libsm6 libxext6 unzip curl wget nano && rm -rf /var/lib/apt/lists/*
 RUN useradd -ms /bin/bash pyuser && mkdir /app && chown pyuser /app
-COPY --chown=pyuser GFPGANv1.3.pth /app/
+COPY --chown=pyuser GFPGANv1.4.pth /app/
 COPY --chown=pyuser models/ /app/models/
 COPY --chown=pyuser requirements*.txt /app/
 USER pyuser
