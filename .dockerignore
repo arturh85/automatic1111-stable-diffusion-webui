@@ -3,7 +3,7 @@
 /outputs/
 /repositories/
 /models/
-!/models/Stable-diffusion/
+!/models/Stable-diffusion/stable-diffusion-1.4.ckpt
 /tmp/
 /venv/
 /.dockerignore

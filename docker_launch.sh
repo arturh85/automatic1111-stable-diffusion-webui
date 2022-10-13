@@ -26,8 +26,7 @@ delimiter="################################################################"
 #     exit 1
 # fi
 
-
 printf "\n%s\n" "${delimiter}"
 printf "Launching launch.py..."
 printf "\n%s\n" "${delimiter}"
-"${python_cmd}" launch.py --no-half --precision full --listen
+"${python_cmd}" launch.py --no-half --precision full

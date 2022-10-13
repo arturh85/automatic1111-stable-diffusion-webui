@@ -174,7 +174,7 @@ hide_dirs = {"visible": not cmd_opts.hide_ui_dir_config}
 options_templates = {}
 
 options_templates.update(options_section(('saving-images', "Saving images/grids"), {
-    "samples_save": OptionInfo(True, "Always save all generated images"),
+    "samples_save": OptionInfo(False, "Always save all generated images"),
     "samples_format": OptionInfo('png', 'File format for images'),
     "samples_filename_pattern": OptionInfo("", "Images filename pattern"),
 
@@ -261,11 +261,11 @@ options_templates.update(options_section(('interrogate', "Interrogate Options"),
 
 options_templates.update(options_section(('ui', "User interface"), {
     "show_progressbar": OptionInfo(True, "Show progressbar"),
-    "show_progress_every_n_steps": OptionInfo(0, "Show image creation progress every N sampling steps. Set 0 to disable.", gr.Slider, {"minimum": 0, "maximum": 32, "step": 1}),
+    "show_progress_every_n_steps": OptionInfo(5, "Show image creation progress every N sampling steps. Set 0 to disable.", gr.Slider, {"minimum": 0, "maximum": 32, "step": 1}),
     "return_grid": OptionInfo(True, "Show grid in results for web"),
     "do_not_show_images": OptionInfo(False, "Do not show any images in results for web"),
     "add_model_hash_to_info": OptionInfo(True, "Add model hash to generation information"),
-    "add_model_name_to_info": OptionInfo(False, "Add model name to generation information"),
+    "add_model_name_to_info": OptionInfo(True, "Add model name to generation information"),
     "font": OptionInfo("", "Font for image grids that have text"),
     "js_modal_lightbox": OptionInfo(True, "Enable full page image viewer"),
     "js_modal_lightbox_initially_zoomed": OptionInfo(True, "Show images zoomed in by default in full page image viewer"),
