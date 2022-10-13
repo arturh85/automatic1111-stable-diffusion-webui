@@ -19,7 +19,7 @@ from pprint import pprint
 api = Flask(__name__)
 api.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
 
-webapi_secret = None #os.getenv('WEBAPI_SECRET', None)
+webapi_secret = os.getenv('WEBAPI_SECRET', None)
 if webapi_secret != None:
     print("Starting with Webapi Secret: " + webapi_secret)
 else:
@@ -37,17 +37,16 @@ def send_update(ws):
         img_str = base64.b64encode(buffered.getvalue())
         img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
         encoded_image = img_base64.decode("utf-8")
+        shared.state.current_image = None
     
     ws.send(json.dumps({
         "isGenerating": is_generating,
-        "interrupted": shared.state.interrupted,
         "image": encoded_image,
-        "job": shared.state.job,
         "jobNo": shared.state.job_no,
         "jobCount": shared.state.job_count,
         "samplingStep": shared.state.sampling_step,
         "samplingSteps": shared.state.sampling_steps,
-    }, sort_keys=True, indent=4))
+    }, sort_keys=False))
 
 @sock.route('/events')
 def echo(ws):
