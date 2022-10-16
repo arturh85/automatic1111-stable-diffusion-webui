@@ -38,7 +38,7 @@ def send_update(ws):
         img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
         encoded_image = img_base64.decode("utf-8")
         shared.state.current_image = None
-    
+            
     ws.send(json.dumps({
         "isGenerating": is_generating,
         "image": encoded_image,
@@ -51,8 +51,8 @@ def send_update(ws):
 @sock.route('/events')
 def echo(ws):
     try:
+        shared.state.register_listener(lambda: send_update(ws))
         while True:
-            shared.state.register_listener(lambda: send_update(ws))
             data = ws.receive().strip()
             if data == 'close':
                 break
@@ -72,7 +72,11 @@ def echo(ws):
     finally:
         shared.state.clear_listeners()
         
-def apply_model(request_data):
+def after_run(request_data):
+    # shared.state.clear_listeners()
+    pass
+
+def before_run(request_data):
     shared.state.sampling_step = 0
     shared.state.job_count = -1
     shared.state.job_no = 0
@@ -429,12 +433,13 @@ def txt2img():
         # height: int, width: int, enable_hr: bool, denoising_strength: float, 
         # firstphase_width: int, firstphase_height: int, *args
         
-        apply_model(request_data)
+        before_run(request_data)
         images, generation_info_js, stats = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style, prompt_style2, steps, 
                                 sampler_index, restore_faces, tiling, n_iter, batch_size, 
                                 cfg_scale, seed, subseed, subseed_strength, seed_resize_from_h,
                                 seed_resize_from_w, seed_enable_extras, height, width, enable_hr, 
                                 denoising_strength, firstphase_width, firstphase_height, script_args)
+        after_run(request_data)
         is_generating = None
         encoded_image = None
         for image in images:
@@ -559,7 +564,7 @@ def img2img():
         # height: int, width: int, resize_mode: int, inpaint_full_res: bool, 
         # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
         # img2img_batch_output_dir: str, *args
-        apply_model(request_data)
+        before_run(request_data)
         images, generation_info_js, stats = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style, prompt_style2, init_img, 
                                 init_img_with_mask, init_img_inpaint, init_mask_inpaint, mask_mode, steps, 
                                 sampler_index, mask_blur, inpainting_fill, restore_faces, tiling, n_iter, batch_size, 
@@ -567,6 +572,7 @@ def img2img():
                                 seed_resize_from_w, seed_enable_extras, height, width, resize_mode, inpaint_full_res, 
                                 inpaint_full_res_padding,  inpainting_mask_invert, img2img_batch_input_dir,
                                 img2img_batch_output_dir, script_args)
+        after_run(request_data)
         is_generating = None
         encoded_image = None
         for image in images:
@@ -638,6 +644,9 @@ def upscale():
         extras_upscaler_1 = 0
         extras_upscaler_2 = 0
         extras_upscaler_2_visibility = 0
+        input_dir = ""
+        output_dir = ""
+        show_extras_results = False
         
         for idx, upscaler in enumerate(shared.sd_upscalers):
             if upscaler.name == extras_upscaler_1_name:
@@ -646,16 +655,17 @@ def upscale():
         
         # print("using extras_upscaler_1", extras_upscaler_1, extras_upscaler_1_name)        
                 
-        # run_extras(extras_mode, resize_mode, image, image_folder, gfpgan_visibility, 
-        # codeformer_visibility, codeformer_weight, upscaling_resize, upscaling_resize_w, 
-        # upscaling_resize_h, upscaling_crop, extras_upscaler_1, 
-        # extras_upscaler_2, extras_upscaler_2_visibility)
+        # run_extras(extras_mode, resize_mode, image, image_folder, input_dir, output_dir, 
+        # show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
+        # upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
+        # extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility
         
-        apply_model(request_data)
+        before_run(request_data)
         images, generation_info_js, stats = modules.extras.run_extras(extras_mode, resize_mode, init_img, 
-                        image_folder, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
+                        image_folder, input_dir, output_dir, show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
                         upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
                         extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
+        after_run(request_data)
         is_generating = None
         encoded_image = None
         for image in images:
@@ -707,8 +717,9 @@ def img2prompt():
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content)).convert('RGB')
         
-        apply_model(request_data)
+        before_run(request_data)
         prompt = shared.interrogator.interrogate(init_img)
+        after_run(request_data)
         is_generating = None
         if shared.state.interrupted:
             return "aborted", 500
