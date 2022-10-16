@@ -28,3 +28,4 @@ Flask
 flask-sock
 Flask-Cors
 asyncio
+markupsafe==2.0.1
