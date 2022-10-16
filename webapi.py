@@ -417,22 +417,24 @@ def txt2img():
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
         enable_hr = request_data["isHighresFix"] if "isHighresFix" in request_data else False
-        scale_latent = request_data["isHighresFixScaleLatent"] if "isHighresFixScaleLatent" in request_data else False
+        #scale_latent = request_data["isHighresFixScaleLatent"] if "isHighresFixScaleLatent" in request_data else False
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
+        firstphase_width = 0
+        firstphase_height = 0
         
-        # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int, 
-        # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, 
-        # cfg_scale: float, seed: int, subseed: int, subseed_strength: float, seed_resize_from_h: int, 
-        # seed_resize_from_w: int, seed_enable_extras: bool, height: int, width: int, enable_hr: bool, 
-        # scale_latent: bool, denoising_strength: float, *args):
+        # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int, sampler_index: int, 
+        # restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, seed: int, subseed: int, 
+        # subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool, 
+        # height: int, width: int, enable_hr: bool, denoising_strength: float, 
+        # firstphase_width: int, firstphase_height: int, *args
         
         apply_model(request_data)
         images, generation_info_js, stats = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style, prompt_style2, steps, 
                                 sampler_index, restore_faces, tiling, n_iter, batch_size, 
                                 cfg_scale, seed, subseed, subseed_strength, seed_resize_from_h,
                                 seed_resize_from_w, seed_enable_extras, height, width, enable_hr, 
-                                scale_latent, denoising_strength, script_args)
+                                denoising_strength, firstphase_width, firstphase_height, script_args)
         is_generating = None
         encoded_image = None
         for image in images:
@@ -543,19 +545,18 @@ def img2img():
         img2img_batch_output_dir = ""
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
-        enable_hr = False
-        scale_latent = False
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
         
         
         
-        # mode: int, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, init_img, 
-        # init_img_with_mask, init_img_inpaint, init_mask_inpaint, mask_mode, steps: int, 
-        # sampler_index: int, mask_blur: int, inpainting_fill: int, restore_faces: bool, tiling: bool, 
-        # n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float, seed: int, 
-        # subseed: int, subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, 
-        # seed_enable_extras: bool, height: int, width: int, resize_mode: int, inpaint_full_res: bool,
+        # img2img(mode: int, prompt: str, negative_prompt: str, prompt_style: str, 
+        # prompt_style2: str, init_img, init_img_with_mask, init_img_inpaint, init_mask_inpaint, 
+        # mask_mode, steps: int, sampler_index: int, mask_blur: int, inpainting_fill: int, 
+        # restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, 
+        # denoising_strength: float, seed: int, subseed: int, subseed_strength: float, 
+        # seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool, 
+        # height: int, width: int, resize_mode: int, inpaint_full_res: bool, 
         # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
         # img2img_batch_output_dir: str, *args
         apply_model(request_data)
@@ -565,7 +566,7 @@ def img2img():
                                 cfg_scale, denoising_strength, seed, subseed, subseed_strength, seed_resize_from_h,
                                 seed_resize_from_w, seed_enable_extras, height, width, resize_mode, inpaint_full_res, 
                                 inpaint_full_res_padding,  inpainting_mask_invert, img2img_batch_input_dir,
-                                img2img_batch_output_dir, scale_latent, script_args)
+                                img2img_batch_output_dir, script_args)
         is_generating = None
         encoded_image = None
         for image in images:
@@ -624,11 +625,15 @@ def upscale():
             init_img = Image.open(BytesIO(response.content))
         
         extras_mode = 0
+        resize_mode = 0
         image_folder = None
         gfpgan_visibility = 0 
         codeformer_visibility = 1
         codeformer_weight = 0.9
         upscaling_resize = request_data["upscaleFactor"] if "upscaleFactor" in request_data else 2
+        upscaling_resize_w = 0
+        upscaling_resize_h = 0
+        upscaling_crop = 0
         extras_upscaler_1_name = request_data["submode"] if "submode" in request_data else "None"
         extras_upscaler_1 = 0
         extras_upscaler_2 = 0
@@ -641,14 +646,16 @@ def upscale():
         
         # print("using extras_upscaler_1", extras_upscaler_1, extras_upscaler_1_name)        
                 
-        # extras_mode, image, image_folder, gfpgan_visibility, codeformer_visibility, 
-        # codeformer_weight, upscaling_resize, extras_upscaler_1, extras_upscaler_2, 
-        # extras_upscaler_2_visibility
+        # run_extras(extras_mode, resize_mode, image, image_folder, gfpgan_visibility, 
+        # codeformer_visibility, codeformer_weight, upscaling_resize, upscaling_resize_w, 
+        # upscaling_resize_h, upscaling_crop, extras_upscaler_1, 
+        # extras_upscaler_2, extras_upscaler_2_visibility)
         
         apply_model(request_data)
-        images, generation_info_js, stats = modules.extras.run_extras(extras_mode, init_img, 
+        images, generation_info_js, stats = modules.extras.run_extras(extras_mode, resize_mode, init_img, 
                         image_folder, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
-                        upscaling_resize, extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
+                        upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
+                        extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
         is_generating = None
         encoded_image = None
         for image in images:
