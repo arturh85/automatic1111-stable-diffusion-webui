@@ -30,3 +30,4 @@ notification.mp3
 /models/*.ckpt
 /ESRGAN/*.pth
 /textual_inversion
+/scripts/deforum*

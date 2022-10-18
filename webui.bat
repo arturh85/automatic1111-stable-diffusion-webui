@@ -33,7 +33,10 @@ goto :launch
 :skip_venv
 
 :launch
-%PYTHON% launch.py
+:: https://github.com/deforum-art/deforum-for-automatic1111-webui 
+:: 4.Important: If you want to use 3D mode, launch the WebUI with 
+:: the --disable-safe-unpickle option or else it won't let you to use the depth models!
+%PYTHON% launch.py --port 7861 --disable-safe-unpickle
 pause
 exit /b
 

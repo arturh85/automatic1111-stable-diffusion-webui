@@ -1,6 +1,6 @@
 import json, re, base64, random, requests, traceback, os
 from typing import Any
-from flask import Flask, json, request
+from flask import Flask, json, request, jsonify
 from flask_cors import CORS
 from flask_sock import Sock
 from PIL import Image
@@ -162,221 +162,221 @@ def list_endpoints():
                 "default": shared.opts.CLIP_ignore_last_layers
     }
     
-    return [
-    {
-        "name": "Text to Image",
-        "mode": "txt2img",
-        "path": "/api/txt2img",
-        "inputs": {
-            "model": model,
-            "models": models,
-            "hypernetwork": hypernetwork,
-            "hypernetworks": hypernetworks,
-            "clipIgnoreLastLayers": clipIgnoreLastLayers,
-            
-            "isHighresFix":True,
-            "isHighresFixScaleLatent":True,
-            "isTiling":True,
-            
-            "prompt": True,
-            "negativePrompt": True,
-            "sampleSteps": {
-                "min": 1,
-                "max": 200,
-                "step": 1,
-                "default": 50
+    return jsonify([
+        {
+            "name": "Text to Image",
+            "mode": "txt2img",
+            "path": "/api/txt2img",
+            "inputs": {
+                "model": model,
+                "models": models,
+                "hypernetwork": hypernetwork,
+                "hypernetworks": hypernetworks,
+                "clipIgnoreLastLayers": clipIgnoreLastLayers,
+                
+                "isHighresFix":True,
+                "isHighresFixScaleLatent":True,
+                "isTiling":True,
+                
+                "prompt": True,
+                "negativePrompt": True,
+                "sampleSteps": {
+                    "min": 1,
+                    "max": 200,
+                    "step": 1,
+                    "default": 50
+                },
+                "guidanceScale": {
+                    "min": 1,
+                    "max": 50,
+                    "step": 0.5,
+                    "default": 7.5
+                },
+                "denoisingStrength": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.75
+                },
+                "seed": True,
+                "samplers": samplers,
+                "sampler": "LMS",
+                "imageWidth": {
+                    "min": 256,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 512
+                },
+                "imageHeight": {
+                    "min": 256,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 512
+                },
+                # https://formkit.com/advanced/schema
+                # "custom": [
+                #     # {
+                #     #     "$el": 'h1',
+                #     #     "children": 'Custom Settings'
+                #     # },
+                #     # {
+                #     #     "$formkit": 'text',
+                #     #     "name": 'email',
+                #     #     "label": 'Email',
+                #     #     "help": 'This will be used for your account.',
+                #     #     "validation": 'required|email',
+                #     # },
+                #     {
+                #         "$formkit": 'text',
+                #         "name": 'variantSeed',
+                #         "label": 'VariantSeed',
+                #         # "help": 'This will be used for your account.',
+                #         # "validation": 'required'
+                #     },
+                #     {
+                #         "$formkit": 'primeSlider',
+                #         "name": 'variantStrength',
+                #         "label": 'Variant Strength %',
+                #         "min": 0,
+                #         "max": 100,
+                #         "step": 1,
+                #         "value": 80,
+                #     },
+                # ]
             },
-            "guidanceScale": {
-                "min": 1,
-                "max": 50,
-                "step": 0.5,
-                "default": 7.5
-            },
-            "denoisingStrength": {
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "default": 0.75
-            },
-            "seed": True,
-            "samplers": samplers,
-            "sampler": "LMS",
-            "imageWidth": {
-                "min": 256,
-                "max": 2048,
-                "step": 64,
-                "default": 512
-            },
-            "imageHeight": {
-                "min": 256,
-                "max": 2048,
-                "step": 64,
-                "default": 512
-            },
-            # https://formkit.com/advanced/schema
-            # "custom": [
-            #     # {
-            #     #     "$el": 'h1',
-            #     #     "children": 'Custom Settings'
-            #     # },
-            #     # {
-            #     #     "$formkit": 'text',
-            #     #     "name": 'email',
-            #     #     "label": 'Email',
-            #     #     "help": 'This will be used for your account.',
-            #     #     "validation": 'required|email',
-            #     # },
-            #     {
-            #         "$formkit": 'text',
-            #         "name": 'variantSeed',
-            #         "label": 'VariantSeed',
-            #         # "help": 'This will be used for your account.',
-            #         # "validation": 'required'
-            #     },
-            #     {
-            #         "$formkit": 'primeSlider',
-            #         "name": 'variantStrength',
-            #         "label": 'Variant Strength %',
-            #         "min": 0,
-            #         "max": 100,
-            #         "step": 1,
-            #         "value": 80,
-            #     },
-            # ]
-        },
-        "outputs": {
-            "image": "png",
-        }
-    },
-    {
-        "name": "Image to Image",
-        "mode": "img2img",
-        "path": "/api/img2img",
-        "inputs": {
-            "model": model,
-            "models": models,
-            "hypernetwork": hypernetwork,
-            "hypernetworks": hypernetworks,
-            "clipIgnoreLastLayers": clipIgnoreLastLayers,
-            "image": True,
-            "mask": True,
-            "prompt": True,
-            "negativePrompt": True,          
-            "sampleSteps": {
-                "min": 1,
-                "max": 200,
-                "step": 1,
-                "default": 50
-            },
-            "guidanceScale": {
-                "min": 1,
-                "max": 50,
-                "step": 0.5,
-                "default": 7.5
-            },
-            "denoisingStrength": {
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "default": 0.75
-            },
-            "seed": True,
-            "samplers": samplers_img2img,
-            "sampler": "LMS",
-            "imageWidth": {
-                "min": 256,
-                "max": 2048,
-                "step": 64,
-                "default": 512
-            },
-            "imageHeight": {
-                "min": 256,
-                "max": 2048,
-                "step": 64,
-                "default": 512
-            },
-        },
-        "outputs": {
-            "image": "png"
-        }
-    },
-    {
-        "name": "Image to Prompt",
-        "mode": "img2prompt",
-        "path": "/api/img2prompt",
-        "inputs": {
-            "image": True,
-        },
-        "outputs": {
-            "prompt": True
-        }
-    },
-    {
-        "name": "Upscale",
-        "mode": "upscale",
-        "path": "/api/upscale",
-        "submodes": [
-            {
-                "name": "No Upscale",
-                "submode": "None",
-                "inputs": {
-                }
-            },
-            {
-                "name": "Lanczos",
-                "submode": "Lanczos",
-                "inputs": {
-                    "upscaleFactor": upscaleFactor,
-                }
-            },
-            {
-                "name": "LDSR",
-                "submode": "LDSR",
-                "inputs": {
-                    "upscaleFactor": upscaleFactor,
-                }
-            },
-            {
-                "name": "ESRGAN 4x",
-                "submode": "ESRGAN 4x",
-                "inputs": {
-                    "upscaleFactor": upscaleFactor,
-                }
-            },
-            {
-                "name": "BSRGAN 4x",
-                "submode": "BSRGAN 4x",
-                "inputs": {
-                    "upscaleFactor": upscaleFactor,
-                }
-            },
-            {
-                "name": "SwinIR 4x",
-                "submode": "SwinIR 4x",
-                "inputs": {
-                    "upscaleFactor": upscaleFactor,
-                }
-            }
-        ],
-        "inputs": {
-            "image": True,
-            'fixFaces': 'codeformer',
-            'fixFacesOptions': {
-                'Codeformer': 'codeformer',
-                'GFPGAN': 'gfpgan',
-            },
-            "fixFacesStrength": {
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "default": 0.9
+            "outputs": {
+                "image": "png",
             }
         },
-        "outputs": {
-            "image": "png"
+        {
+            "name": "Image to Image",
+            "mode": "img2img",
+            "path": "/api/img2img",
+            "inputs": {
+                "model": model,
+                "models": models,
+                "hypernetwork": hypernetwork,
+                "hypernetworks": hypernetworks,
+                "clipIgnoreLastLayers": clipIgnoreLastLayers,
+                "image": True,
+                "mask": True,
+                "prompt": True,
+                "negativePrompt": True,          
+                "sampleSteps": {
+                    "min": 1,
+                    "max": 200,
+                    "step": 1,
+                    "default": 50
+                },
+                "guidanceScale": {
+                    "min": 1,
+                    "max": 50,
+                    "step": 0.5,
+                    "default": 7.5
+                },
+                "denoisingStrength": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.75
+                },
+                "seed": True,
+                "samplers": samplers_img2img,
+                "sampler": "LMS",
+                "imageWidth": {
+                    "min": 256,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 512
+                },
+                "imageHeight": {
+                    "min": 256,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 512
+                },
+            },
+            "outputs": {
+                "image": "png"
+            }
+        },
+        {
+            "name": "Image to Prompt",
+            "mode": "img2prompt",
+            "path": "/api/img2prompt",
+            "inputs": {
+                "image": True,
+            },
+            "outputs": {
+                "prompt": True
+            }
+        },
+        {
+            "name": "Upscale",
+            "mode": "upscale",
+            "path": "/api/upscale",
+            "submodes": [
+                {
+                    "name": "No Upscale",
+                    "submode": "None",
+                    "inputs": {
+                    }
+                },
+                {
+                    "name": "Lanczos",
+                    "submode": "Lanczos",
+                    "inputs": {
+                        "upscaleFactor": upscaleFactor,
+                    }
+                },
+                {
+                    "name": "LDSR",
+                    "submode": "LDSR",
+                    "inputs": {
+                        "upscaleFactor": upscaleFactor,
+                    }
+                },
+                {
+                    "name": "ESRGAN 4x",
+                    "submode": "ESRGAN 4x",
+                    "inputs": {
+                        "upscaleFactor": upscaleFactor,
+                    }
+                },
+                {
+                    "name": "BSRGAN 4x",
+                    "submode": "BSRGAN 4x",
+                    "inputs": {
+                        "upscaleFactor": upscaleFactor,
+                    }
+                },
+                {
+                    "name": "SwinIR 4x",
+                    "submode": "SwinIR 4x",
+                    "inputs": {
+                        "upscaleFactor": upscaleFactor,
+                    }
+                }
+            ],
+            "inputs": {
+                "image": True,
+                'fixFaces': 'codeformer',
+                'fixFacesOptions': {
+                    'Codeformer': 'codeformer',
+                    'GFPGAN': 'gfpgan',
+                },
+                "fixFacesStrength": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0.9
+                }
+            },
+            "outputs": {
+                "image": "png"
+            }
         }
-    }
-]
+    ]), 200
     
 
 @api.route('/api/txt2img', methods=['POST'])

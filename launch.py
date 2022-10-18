@@ -6,6 +6,7 @@ import importlib.util
 import shlex
 import platform
 
+dir_scripts = "scripts"
 dir_repos = "repositories"
 dir_tmp = "tmp"
 
@@ -62,6 +63,8 @@ def is_installed(package):
 def repo_dir(name):
     return os.path.join(dir_repos, name)
 
+def scripts_dir(name):
+    return os.path.join(dir_scripts, name)
 
 def run_python(code, desc=None, errdesc=None):
     return run(f'"{python}" -c "{code}"', desc, errdesc)
@@ -114,6 +117,7 @@ def prepare_enviroment():
     codeformer_repo = os.environ.get('CODEFORMET_REPO', 'https://github.com/sczhou/CodeFormer.git')
     blip_repo = os.environ.get('BLIP_REPO', 'https://github.com/salesforce/BLIP.git')
     latent_diffusion_repo = os.environ.get('LATENT_DIFFUSION_REPO', 'https://github.com/Hafiidz/latent-diffusion.git')
+    deforum_repo = os.environ.get('DEFORUM_REPO', 'https://github.com/deforum-art/deforum-for-automatic1111-webui.git')
 
     stable_diffusion_commit_hash = os.environ.get('STABLE_DIFFUSION_COMMIT_HASH', "69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc")
     taming_transformers_commit_hash = os.environ.get('TAMING_TRANSFORMERS_COMMIT_HASH', "24268930bf1dce879235a7fddd0b2355b84d7ea6")
@@ -121,6 +125,7 @@ def prepare_enviroment():
     codeformer_commit_hash = os.environ.get('CODEFORMER_COMMIT_HASH', "c5b4593074ba6214284d6acd5f1719b6c5d739af")
     blip_commit_hash = os.environ.get('BLIP_COMMIT_HASH', "48211a1594f1321b00f14c9f7a5b4813144b2fb9")
     latent_diffusion_commit_hash = os.environ.get('LDSR_COMMIT_HASH', "abf33e7002d59d9085081bce93ec798dcabd49af")
+    deforum_commit_hash = os.environ.get('DEFORUM_COMMIT_HASH', "4069be628afc6c2e0e922466321025d91afd4ec9")
 
     args = shlex.split(commandline_args)
 
@@ -166,6 +171,11 @@ def prepare_enviroment():
     git_clone(codeformer_repo, repo_dir('CodeFormer'), "CodeFormer", codeformer_commit_hash)
     git_clone(blip_repo, repo_dir('BLIP'), "BLIP", blip_commit_hash)
     git_clone(latent_diffusion_repo, repo_dir('latent-diffusion'), "latent-diffusion", latent_diffusion_commit_hash)
+    git_clone(deforum_repo, repo_dir('deforum'), "deforum", deforum_commit_hash)
+    if not os.path.exists(scripts_dir("deforum.py")):
+        os.symlink(os.path.join("..", repo_dir('deforum'), 'deforum.py'), scripts_dir("deforum.py"))
+    if not os.path.exists(scripts_dir("deforum")):
+        os.symlink(os.path.join("..", repo_dir('deforum'), 'deforum'), scripts_dir("deforum"), True)
 
     if not is_installed("lpips"):
         run_pip(f"install -r {os.path.join(repo_dir('CodeFormer'), 'requirements.txt')}", "requirements for CodeFormer")
