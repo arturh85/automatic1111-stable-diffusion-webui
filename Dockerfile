@@ -10,15 +10,17 @@ WORKDIR /app
 COPY --chown=pyuser webui-user.sh /app/
 COPY --chown=pyuser docker_build.sh /app/
 COPY --chown=pyuser launch.py /app/
+COPY --chown=pyuser scripts/ /app/scripts/
 RUN export PATH=$PATH:/home/pyuser/.local/bin; mkdir embeddings; mkdir repositories; mkdir tmp; mkdir outputs; bash docker_build.sh
 COPY --chown=pyuser *.csv /app/
 COPY --chown=pyuser *.sh /app/
 COPY --chown=pyuser *.json /app/
 COPY --chown=pyuser *.js /app/
 COPY --chown=pyuser *.css /app/
+COPY --chown=pyuser localizations/ /app/localizations/
+COPY --chown=pyuser taming/ /app/taming/
 COPY --chown=pyuser javascript/ /app/javascript/
 COPY --chown=pyuser modules/ /app/modules/
-COPY --chown=pyuser scripts/ /app/scripts/
 COPY --chown=pyuser *.py /app/
 COPY --chown=pyuser textual_inversion_templates/ /app/textual_inversion_templates/
 #EXPOSE 7860

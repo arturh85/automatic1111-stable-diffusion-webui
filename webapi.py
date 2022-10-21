@@ -25,6 +25,11 @@ if webapi_secret != None:
 else:
     print("Starting without Webapi Secret")
 
+
+imageResizeModes = ["Just resize", "Crop and resize", "Resize and fill"]
+maskContentModes = ["fill", "original", "latent noise", "latent nothing"]
+maskInpaintModes = ["Inpaint masked", "Inpaint not masked"]
+
 sock = Sock(api)
 CORS(api)
 is_generating = None
@@ -104,6 +109,15 @@ def before_run(request_data):
         shared.opts.sd_model_checkpoint = request_data['model']
         shared.opts.data_labels["sd_model_checkpoint"].onchange()
         dirty = True
+        
+    # if 'clipIgnoreLastLayers' in request_data and request_data['clipIgnoreLastLayers'] is not None and request_data['clipIgnoreLastLayers'] != shared.opts.CLIP_ignore_last_layers:
+    #     shared.opts.CLIP_ignore_last_layers = request_data['clipIgnoreLastLayers']
+    #     dirty = True
+    if '925997e9' in shared.opts.sd_model_checkpoint:
+        shared.opts.CLIP_ignore_last_layers = 2
+    else:
+        shared.opts.CLIP_ignore_last_layers = 0
+        
     hypernetworks = [x for x in shared.hypernetworks.keys()]
     
     if 'hypernetwork' in request_data:
@@ -118,10 +132,6 @@ def before_run(request_data):
             shared.opts.data_labels["sd_hypernetwork"].onchange()
             dirty = True
             
-    if 'clipIgnoreLastLayers' in request_data and request_data['clipIgnoreLastLayers'] is not None and request_data['clipIgnoreLastLayers'] != shared.opts.CLIP_ignore_last_layers:
-        shared.opts.CLIP_ignore_last_layers = request_data['clipIgnoreLastLayers']
-        dirty = True
-        
     if 'faceRestoreModel' in request_data and request_data['faceRestoreModel'] is not None:
         if request_data['faceRestoreModel'] != shared.opts.face_restoration_model:
             shared.opts.face_restoration_model = request_data['faceRestoreModel']
@@ -143,6 +153,13 @@ def list_endpoints():
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         print("got wrong secret: " + request.headers.get('webapi-secret', "should not happen"))
         return 'wrong secret', 401
+    
+    imageSize = {
+        "min": 256,
+        "max": 2048,
+        "step": 64,
+        "default": 512
+    }
     
     samplers = {}
     for sampler in map(lambda x: x.name, modules.sd_samplers.samplers):
@@ -167,12 +184,12 @@ def list_endpoints():
     if hypernetwork == "None":
         hypernetwork = None
         
-    clipIgnoreLastLayers = {
-                "min": 0,
-                "max": 5,
-                "step": 1,
-                "default": shared.opts.CLIP_ignore_last_layers
-    }
+    # clipIgnoreLastLayers = {
+    #             "min": 0,
+    #             "max": 5,
+    #             "step": 1,
+    #             "default": shared.opts.CLIP_ignore_last_layers
+    # }
     
     faceRestoreModels = [x.name() for x in shared.face_restorers if x.name() != "None"]
     faceRestoreStrength = {
@@ -192,7 +209,6 @@ def list_endpoints():
                 "models": models,
                 "hypernetwork": hypernetwork,
                 "hypernetworks": hypernetworks,
-                "clipIgnoreLastLayers": clipIgnoreLastLayers,
                 
                 "isHighresFix":True,
                 "isHighresFixScaleLatent":True,
@@ -255,18 +271,8 @@ def list_endpoints():
                 },
                 "samplers": samplers,
                 "sampler": "Euler",
-                "imageWidth": {
-                    "min": 256,
-                    "max": 2048,
-                    "step": 64,
-                    "default": 512
-                },
-                "imageHeight": {
-                    "min": 256,
-                    "max": 2048,
-                    "step": 64,
-                    "default": 512
-                },
+                "imageWidth": imageSize,
+                "imageHeight": imageSize,
                 # https://formkit.com/advanced/schema
                 # "custom": [
                 #     # {
@@ -311,15 +317,18 @@ def list_endpoints():
                 "models": models,
                 "hypernetwork": hypernetwork,
                 "hypernetworks": hypernetworks,
-                "clipIgnoreLastLayers": clipIgnoreLastLayers,
                 "image": True,
                 "mask": True,
                 "prompt": True,
                 "negativePrompt": True,
                 
-                "imageResizeModes": ["Just resize", "Crop and resize", "Resize and fill"],
-                "maskContentModes": ["fill original", "latent noise", "latent nothing"],
-                "maskInpaintModes": ["Inpaint masked", "Inpaint not masked"],
+                "imageResizeMode": "Just resize",
+                "imageResizeModes": imageResizeModes,
+                "maskContentMode": "fill",
+                "maskContentModes": maskContentModes,
+                "maskInpaintMode": "Inpaint masked",
+                "maskInpaintModes": maskInpaintModes,
+                
                 "maskBlurStrength": {
                     "min": 0,
                     "max": 64,
@@ -377,18 +386,8 @@ def list_endpoints():
                 "faceRestoreStrength": faceRestoreStrength,
                 "samplers": samplers_img2img,
                 "sampler": "DDIM",
-                "imageWidth": {
-                    "min": 256,
-                    "max": 2048,
-                    "step": 64,
-                    "default": 512
-                },
-                "imageHeight": {
-                    "min": 256,
-                    "max": 2048,
-                    "step": 64,
-                    "default": 512
-                },
+                "imageWidth": imageSize,
+                "imageHeight": imageSize,
             },
             "outputs": {
                 "image": "png"
@@ -600,7 +599,7 @@ def img2img():
                     mask_info = Image.open(BytesIO(response.content))
                     
                    
-                init_img_with_mask = {"image": init_img.convert("RGBA"), "mask": mask_info}
+                init_img_with_mask = {"image": init_img.convert("RGBA"), "mask": mask_info.resize(init_img.size)}
                 init_img = None
                 mode = 1
                 mask_mode = 0
@@ -613,18 +612,27 @@ def img2img():
         #init_img_with_mask = None
         init_img_inpaint = None
         init_mask_inpaint = None
-        resize_mode = 0
+        try:
+            resize_mode = imageResizeModes.index(request_data["imageResizeMode"]) if "imageResizeMode" in request_data else 0
+        except ValueError:
+            resize_mode = 0
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
         sampler_index = samplers.index(sampler) if sampler in samplers else 0
-        mask_blur = 0
-        inpainting_fill = 0
-        restore_faces = False
-        tiling = False
+        mask_blur = request_data["maskBlurStrength"] if "maskBlurStrength" in request_data else 4
+        try:
+            inpainting_fill = maskContentModes.index(request_data["maskContentMode"]) if "maskContentMode" in request_data else 0
+        except ValueError:
+            inpainting_fill = 0
+        restore_faces = request_data["faceRestoreStrength"] > 0 if "faceRestoreStrength" in request_data else False
+        tiling = request_data["isTiling"] if "isTiling" in request_data else False
         n_iter = 1
-        inpaint_full_res = False
-        inpaint_full_res_padding = 0
-        inpainting_mask_invert = 0
+        inpaint_full_res = request_data["maskInpaintFullResolution"] if "maskInpaintFullResolution" in request_data else False
+        inpaint_full_res_padding = request_data["maskInpaintFullResolutionPadding"] if "maskInpaintFullResolutionPadding" in request_data else 0
+        try:
+            inpainting_mask_invert = maskInpaintModes.index(request_data["maskInpaintMode"]) if "maskInpaintMode" in request_data else 0
+        except ValueError:
+            inpainting_mask_invert = 0
         batch_size = 1
         cfg_scale = request_data["guidanceScale"] if "guidanceScale" in request_data else 7.5
         seed = seed_to_int(request_data["seed"] if "seed" in request_data else "")
