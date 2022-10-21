@@ -1,4 +1,4 @@
-import json, re, base64, random, requests, traceback, os
+import json, re, base64, random, requests, traceback, os, numpy
 from typing import Any
 from flask import Flask, json, request, jsonify
 from flask_cors import CORS
@@ -121,6 +121,18 @@ def before_run(request_data):
     if 'clipIgnoreLastLayers' in request_data and request_data['clipIgnoreLastLayers'] is not None and request_data['clipIgnoreLastLayers'] != shared.opts.CLIP_ignore_last_layers:
         shared.opts.CLIP_ignore_last_layers = request_data['clipIgnoreLastLayers']
         dirty = True
+        
+    if 'faceRestoreModel' in request_data and request_data['faceRestoreModel'] is not None:
+        if request_data['faceRestoreModel'] != shared.opts.face_restoration_model:
+            shared.opts.face_restoration_model = request_data['faceRestoreModel']
+    elif shared.opts.face_restoration_model is not None and shared.opts.face_restoration_model != "None":
+        shared.opts.face_restoration_model = "None"
+            
+    if 'faceRestoreStrength' in request_data and request_data['faceRestoreStrength'] is not None:
+        if request_data['faceRestoreStrength'] != shared.opts.code_former_weight:
+            shared.opts.code_former_weight = request_data['faceRestoreStrength']
+    elif shared.opts.code_former_weight > 0:
+        shared.opts.face_restoration_model = 0
             
     if dirty:
         shared.opts.save(shared.config_filename)
@@ -162,6 +174,14 @@ def list_endpoints():
                 "default": shared.opts.CLIP_ignore_last_layers
     }
     
+    faceRestoreModels = [x.name() for x in shared.face_restorers if x.name() != "None"]
+    faceRestoreStrength = {
+        "min": 0,
+        "max": 1,
+        "step": 0.05,
+        "default": 0.5
+    }
+    
     return jsonify([
         {
             "name": "Text to Image",
@@ -178,13 +198,16 @@ def list_endpoints():
                 "isHighresFixScaleLatent":True,
                 "isTiling":True,
                 
+                "faceRestoreModels": faceRestoreModels,
+                "faceRestoreStrength": faceRestoreStrength,
+                
                 "prompt": True,
                 "negativePrompt": True,
                 "sampleSteps": {
                     "min": 1,
                     "max": 200,
                     "step": 1,
-                    "default": 50
+                    "default": 30
                 },
                 "guidanceScale": {
                     "min": 1,
@@ -198,9 +221,40 @@ def list_endpoints():
                     "step": 0.05,
                     "default": 0.75
                 },
+                "resizeSeedFromWidth": {
+                    "min": 0,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 0
+                },
+                "resizeSeedFromHeight": {
+                    "min": 0,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 0
+                },
+                "firstPassWidth": {
+                    "min": 0,
+                    "max": 1024,
+                    "step": 1,
+                    "default": 0
+                },
+                "firstPassHeight": {
+                    "min": 0,
+                    "max": 1024,
+                    "step": 1,
+                    "default": 0
+                },
                 "seed": True,
+                "variationSeed": True,
+                "variationStrength": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0
+                },
                 "samplers": samplers,
-                "sampler": "LMS",
+                "sampler": "Euler",
                 "imageWidth": {
                     "min": 256,
                     "max": 2048,
@@ -261,12 +315,30 @@ def list_endpoints():
                 "image": True,
                 "mask": True,
                 "prompt": True,
-                "negativePrompt": True,          
+                "negativePrompt": True,
+                
+                "imageResizeModes": ["Just resize", "Crop and resize", "Resize and fill"],
+                "maskContentModes": ["fill original", "latent noise", "latent nothing"],
+                "maskInpaintModes": ["Inpaint masked", "Inpaint not masked"],
+                "maskBlurStrength": {
+                    "min": 0,
+                    "max": 64,
+                    "step": 1,
+                    "default": 4
+                },
+                "maskInpaintFullResolution": True,
+                "maskInpaintFullResolutionPadding": {
+                    "min": 0,
+                    "max": 256,
+                    "step": 4,
+                    "default": 32
+                },
+                
                 "sampleSteps": {
                     "min": 1,
                     "max": 200,
                     "step": 1,
-                    "default": 50
+                    "default": 30
                 },
                 "guidanceScale": {
                     "min": 1,
@@ -280,9 +352,31 @@ def list_endpoints():
                     "step": 0.05,
                     "default": 0.75
                 },
+                "resizeSeedFromWidth": {
+                    "min": 0,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 0
+                },
+                "resizeSeedFromHeight": {
+                    "min": 0,
+                    "max": 2048,
+                    "step": 64,
+                    "default": 0
+                },
+                "isTiling":True,
                 "seed": True,
+                "variationSeed": True,
+                "variationStrength": {
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.05,
+                    "default": 0
+                },
+                "faceRestoreModels": faceRestoreModels,
+                "faceRestoreStrength": faceRestoreStrength,
                 "samplers": samplers_img2img,
-                "sampler": "LMS",
+                "sampler": "DDIM",
                 "imageWidth": {
                     "min": 256,
                     "max": 2048,
@@ -360,17 +454,8 @@ def list_endpoints():
             ],
             "inputs": {
                 "image": True,
-                'fixFaces': 'codeformer',
-                'fixFacesOptions': {
-                    'Codeformer': 'codeformer',
-                    'GFPGAN': 'gfpgan',
-                },
-                "fixFacesStrength": {
-                    "min": 0,
-                    "max": 1,
-                    "step": 0.05,
-                    "default": 0.9
-                }
+                "faceRestoreModels": faceRestoreModels,
+                "faceRestoreStrength": faceRestoreStrength
             },
             "outputs": {
                 "image": "png"
@@ -400,32 +485,31 @@ def txt2img():
         for sampler in map(lambda x: x.name, modules.sd_samplers.samplers):
             samplers.append(sampler)
         
-        prompt = request_data["prompt"] if "prompt" in request_data else ""
+        prompt = request_data["prompt"] if "prompt" in request_data else "???"
         negative_prompt = request_data["negativePrompt"]  if "negativePrompt" in request_data else ""
         prompt_style = ""
         prompt_style2 = ""
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
         sampler_index = samplers.index(sampler) if sampler in samplers else 0
-        restore_faces = False
+        restore_faces = request_data["faceRestoreStrength"] > 0 if "faceRestoreStrength" in request_data else False
         tiling = request_data["isTiling"] if "isTiling" in request_data else False
         n_iter = 1
         batch_size = 1
         cfg_scale = request_data["guidanceScale"] if "guidanceScale" in request_data else 7.5
         seed = seed_to_int(request_data["seed"] if "seed" in request_data else "")
-        subseed = 0
-        subseed_strength = 0
-        seed_resize_from_h = 0
-        seed_resize_from_w = 0
-        seed_enable_extras = False 
+        subseed = request_data["variationSeed"] if "variationSeed" in request_data else 0
+        subseed_strength = request_data["variationStrength"] if "variationStrength" in request_data else 0
+        seed_resize_from_w = request_data["resizeSeedFromWidth"] if "resizeSeedFromWidth" in request_data else 0
+        seed_resize_from_h = request_data["resizeSeedFromHeight"] if "resizeSeedFromHeight" in request_data else 0
+        seed_enable_extras = seed_resize_from_w > 0 or seed_resize_from_h > 0 or subseed_strength > 0
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
         enable_hr = request_data["isHighresFix"] if "isHighresFix" in request_data else False
-        #scale_latent = request_data["isHighresFixScaleLatent"] if "isHighresFixScaleLatent" in request_data else False
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
-        script_args = 0
-        firstphase_width = 0
-        firstphase_height = 0
+        script_args = 0 # no script
+        firstphase_width = request_data["firstPassWidth"] if "firstPassWidth" in request_data else 0
+        firstphase_height = request_data["firstPassHeight"] if "firstPassHeight" in request_data else 0
         
         # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int, sampler_index: int, 
         # restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, seed: int, subseed: int, 
@@ -499,6 +583,7 @@ def img2img():
         
         
         mode = 0
+        mask_mode = 0
         init_img_with_mask = None
         
         if "maskImage" in request_data:
@@ -513,9 +598,12 @@ def img2img():
                     print("downloading " + maskImage)
                     response = requests.get(maskImage)
                     mask_info = Image.open(BytesIO(response.content))
+                    
+                   
+                init_img_with_mask = {"image": init_img.convert("RGBA"), "mask": mask_info}
                 init_img = None
-                init_img_with_mask = {"image": init_img, "mask": mask_info}
                 mode = 1
+                mask_mode = 0
 
         prompt = request_data["prompt"] if "prompt" in request_data else ""
         negative_prompt = request_data["negativePrompt"]  if "negativePrompt" in request_data else ""
@@ -525,7 +613,6 @@ def img2img():
         #init_img_with_mask = None
         init_img_inpaint = None
         init_mask_inpaint = None
-        mask_mode = 0
         resize_mode = 0
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
@@ -541,11 +628,11 @@ def img2img():
         batch_size = 1
         cfg_scale = request_data["guidanceScale"] if "guidanceScale" in request_data else 7.5
         seed = seed_to_int(request_data["seed"] if "seed" in request_data else "")
-        subseed = 0
-        subseed_strength = 0
-        seed_resize_from_h = 0
-        seed_resize_from_w = 0
-        seed_enable_extras = False 
+        subseed = request_data["variationSeed"] if "variationSeed" in request_data else 0
+        subseed_strength = request_data["variationStrength"] if "variationStrength" in request_data else 0
+        seed_resize_from_w = request_data["resizeSeedFromWidth"] if "resizeSeedFromWidth" in request_data else 0
+        seed_resize_from_h = request_data["resizeSeedFromHeight"] if "resizeSeedFromHeight" in request_data else 0
+        seed_enable_extras = seed_resize_from_w > 0 or seed_resize_from_h > 0 or subseed_strength > 0
         img2img_batch_input_dir = ""
         img2img_batch_output_dir = ""
         height = request_data["height"] if "height" in request_data else 512
