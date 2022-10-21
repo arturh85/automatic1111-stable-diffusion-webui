@@ -28,3 +28,4 @@ Flask
 flask-sock
 Flask-Cors
 asyncio
+inflection==0.5.1
