@@ -127,7 +127,7 @@ def check_for_psutil():
 
 invokeAI_mps_available = check_for_psutil()
 
-# -- Taken from https://github.com/invoke-ai/InvokeAI --
+# -- Taken from https://github.com/invoke-ai/InvokeAI and modified --
 if invokeAI_mps_available:
     import psutil
     mem_total_gb = psutil.virtual_memory().total // (1 << 30)
@@ -152,14 +152,16 @@ def einsum_op_slice_1(q, k, v, slice_size):
     return r
 
 def einsum_op_mps_v1(q, k, v):
-    if q.shape[1] <= 4096: # (512x512) max q.shape[1]: 4096
+    if q.shape[0] * q.shape[1] <= 2**16: # (512x512) max q.shape[1]: 4096
         return einsum_op_compvis(q, k, v)
     else:
         slice_size = math.floor(2**30 / (q.shape[0] * q.shape[1]))
+        if slice_size % 4096 == 0:
+            slice_size -= 1
         return einsum_op_slice_1(q, k, v, slice_size)
 
 def einsum_op_mps_v2(q, k, v):
-    if mem_total_gb > 8 and q.shape[1] <= 4096:
+    if mem_total_gb > 8 and q.shape[0] * q.shape[1] <= 2**16:
         return einsum_op_compvis(q, k, v)
     else:
         return einsum_op_slice_0(q, k, v, 1)
@@ -181,14 +183,14 @@ def einsum_op_cuda(q, k, v):
     mem_free_torch = mem_reserved - mem_active
     mem_free_total = mem_free_cuda + mem_free_torch
     # Divide factor of safety as there's copying and fragmentation
-    return self.einsum_op_tensor_mem(q, k, v, mem_free_total / 3.3 / (1 << 20))
+    return einsum_op_tensor_mem(q, k, v, mem_free_total / 3.3 / (1 << 20))
 
 def einsum_op(q, k, v):
     if q.device.type == 'cuda':
         return einsum_op_cuda(q, k, v)
 
     if q.device.type == 'mps':
-        if mem_total_gb >= 32:
+        if mem_total_gb >= 32 and q.shape[0] % 32 != 0 and q.shape[0] * q.shape[1] < 2**18:
             return einsum_op_mps_v1(q, k, v)
         return einsum_op_mps_v2(q, k, v)
 
@@ -296,10 +298,16 @@ def xformers_attnblock_forward(self, x):
     try:
         h_ = x
         h_ = self.norm(h_)
-        q1 = self.q(h_).contiguous()
-        k1 = self.k(h_).contiguous()
-        v = self.v(h_).contiguous()
-        out = xformers.ops.memory_efficient_attention(q1, k1, v)
+        q = self.q(h_)
+        k = self.k(h_)
+        v = self.v(h_)
+        b, c, h, w = q.shape
+        q, k, v = map(lambda t: rearrange(t, 'b c h w -> b (h w) c'), (q, k, v))
+        q = q.contiguous()
+        k = k.contiguous()
+        v = v.contiguous()
+        out = xformers.ops.memory_efficient_attention(q, k, v)
+        out = rearrange(out, 'b (h w) c -> b c h w', h=h)
         out = self.proj_out(out)
         return x + out
     except NotImplementedError:
