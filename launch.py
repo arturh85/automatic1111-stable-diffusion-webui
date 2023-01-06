@@ -59,7 +59,7 @@ def extract_opt(args, name):
     return args, is_present, opt
 
 
-def run(command, desc=None, errdesc=None):
+def run(command, desc=None, errdesc=None, custom_env=None):
     if desc is not None:
         print(desc)
 
@@ -278,16 +278,12 @@ def prepare_environment():
 
     run_extensions_installers(settings_file=args.ui_settings_file)
 
-if update_check:
-        version_check(commit)
+#if update_check:
+#        version_check(commit)
 
-    if "--exit" in sys.argv:
-    print("Exiting because of --exit argument")
-    exit(0)
-
-if run_tests:
-        exitcode = tests(test_dir)
-        exit(exitcode)
+#if run_tests:
+#        exitcode = tests(test_dir)
+#        exit(exitcode)
 
 
 def tests(test_dir):
@@ -322,6 +318,6 @@ def start_webui():
 if not install_mode:
     start_webui()
 else:
-    prepare_enviroment()
+    prepare_environment()
     print("Install done.")
     exit(0)

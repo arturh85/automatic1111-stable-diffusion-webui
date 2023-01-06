@@ -13,7 +13,6 @@ import modules.sd_samplers
 import modules.sd_models
 from pprint import pprint
 
-
 # https://flask-sse.readthedocs.io/en/latest/advanced.html#channels
 
 api = Flask(__name__)
@@ -29,6 +28,7 @@ sock = Sock(api)
 CORS(api)
 is_generating = None
 
+
 def send_update(ws):
     encoded_image = ""
     if shared.state.current_image:
@@ -38,7 +38,7 @@ def send_update(ws):
         img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
         encoded_image = img_base64.decode("utf-8")
         shared.state.current_image = None
-            
+
     ws.send(json.dumps({
         "isGenerating": is_generating,
         "image": encoded_image,
@@ -47,6 +47,7 @@ def send_update(ws):
         "samplingStep": shared.state.sampling_step,
         "samplingSteps": shared.state.sampling_steps,
     }, sort_keys=False))
+
 
 @sock.route('/events')
 def echo(ws):
@@ -71,16 +72,17 @@ def echo(ws):
         raise err
     finally:
         shared.state.clear_listeners()
-        
+
+
 def after_run(request_data):
     # shared.state.clear_listeners()
     pass
+
 
 def before_run(request_data):
     shared.state.sampling_step = 0
     shared.state.job_count = -1
     shared.state.job_no = 0
-    shared.state.job_timestamp = shared.state.get_job_timestamp()
     shared.state.current_latent = None
     shared.state.current_image = None
     shared.state.current_image_sampling_step = 0
@@ -88,26 +90,28 @@ def before_run(request_data):
     shared.state.interrupted = False
     shared.state.textinfo = None
     shared.state.job = ""
-    
-    args = request.args        
+
+    args = request.args
     preview = args.get("preview", default="0") == "1"
-    
+
     if preview:
         shared.opts.show_progress_every_n_steps = 5
     else:
         shared.opts.show_progress_every_n_steps = 0
-    
+
     dirty = False
-    models = modules.sd_models.checkpoint_tiles()    
-    if 'model' in request_data and request_data['model'] in models and shared.opts.sd_model_checkpoint != request_data['model']:
+    models = modules.sd_models.checkpoint_tiles()
+    if 'model' in request_data and request_data['model'] in models and shared.opts.sd_model_checkpoint != request_data[
+        'model']:
         print("Loading model: ", request_data['model'])
         shared.opts.sd_model_checkpoint = request_data['model']
         shared.opts.data_labels["sd_model_checkpoint"].onchange()
         dirty = True
     hypernetworks = [x for x in shared.hypernetworks.keys()]
-    
+
     if 'hypernetwork' in request_data:
-        if request_data['hypernetwork'] in hypernetworks and shared.opts.sd_hypernetwork != request_data['hypernetwork']:
+        if request_data['hypernetwork'] in hypernetworks and shared.opts.sd_hypernetwork != request_data[
+            'hypernetwork']:
             # print("Loading hypernetwork: ", request_data['hypernetwork'])
             shared.opts.sd_hypernetwork = request_data['hypernetwork']
             shared.opts.data_labels["sd_hypernetwork"].onchange()
@@ -117,13 +121,15 @@ def before_run(request_data):
             shared.opts.sd_hypernetwork = "None"
             shared.opts.data_labels["sd_hypernetwork"].onchange()
             dirty = True
-            
-    if 'clipIgnoreLastLayers' in request_data and request_data['clipIgnoreLastLayers'] is not None and request_data['clipIgnoreLastLayers'] != shared.opts.CLIP_ignore_last_layers:
+
+    if 'clipIgnoreLastLayers' in request_data and request_data['clipIgnoreLastLayers'] is not None and request_data[
+        'clipIgnoreLastLayers'] != shared.opts.CLIP_ignore_last_layers:
         shared.opts.CLIP_ignore_last_layers = request_data['clipIgnoreLastLayers']
         dirty = True
-            
+
     if dirty:
         shared.opts.save(shared.config_filename)
+
 
 @api.route('/api/endpoints', methods=['GET'])
 def list_endpoints():
@@ -131,37 +137,37 @@ def list_endpoints():
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         print("got wrong secret: " + request.headers.get('webapi-secret', "should not happen"))
         return 'wrong secret', 401
-    
+
     samplers = {}
     for sampler in map(lambda x: x.name, modules.sd_samplers.samplers):
         samplers[sampler] = sampler
-        
+
     samplers_img2img = {}
     for sampler in map(lambda x: x.name, modules.sd_samplers.samplers_for_img2img):
-        samplers_img2img[sampler] = sampler        
-        
+        samplers_img2img[sampler] = sampler
+
     upscaleFactor = {
-        "min": 1, 
-        "max": 4, 
-        "step": 0.5, 
+        "min": 1,
+        "max": 4,
+        "step": 0.5,
         "default": 2
     }
-    
+
     models = modules.sd_models.checkpoint_tiles()
     model = shared.opts.sd_model_checkpoint
-    
+
     hypernetworks = [x for x in shared.hypernetworks.keys()]
     hypernetwork = shared.opts.sd_hypernetwork
     if hypernetwork == "None":
         hypernetwork = None
-        
+
     clipIgnoreLastLayers = {
-                "min": 0,
-                "max": 5,
-                "step": 1,
-                "default": shared.opts.CLIP_ignore_last_layers
+        "min": 0,
+        "max": 5,
+        "step": 1,
+        "default": shared.opts.CLIP_ignore_last_layers
     }
-    
+
     return jsonify([
         {
             "name": "Text to Image",
@@ -173,11 +179,11 @@ def list_endpoints():
                 "hypernetwork": hypernetwork,
                 "hypernetworks": hypernetworks,
                 "clipIgnoreLastLayers": clipIgnoreLastLayers,
-                
-                "isHighresFix":True,
-                "isHighresFixScaleLatent":True,
-                "isTiling":True,
-                
+
+                "isHighresFix": True,
+                "isHighresFixScaleLatent": True,
+                "isTiling": True,
+
                 "prompt": True,
                 "negativePrompt": True,
                 "sampleSteps": {
@@ -261,7 +267,7 @@ def list_endpoints():
                 "image": True,
                 "mask": True,
                 "prompt": True,
-                "negativePrompt": True,          
+                "negativePrompt": True,
                 "sampleSteps": {
                     "min": 1,
                     "max": 200,
@@ -377,7 +383,7 @@ def list_endpoints():
             }
         }
     ]), 200
-    
+
 
 @api.route('/api/txt2img', methods=['POST'])
 def txt2img():
@@ -389,19 +395,22 @@ def txt2img():
     if is_generating:
         return 'already generating', 500
     try:
-        args = request.args        
+
+        print("run txt2img")
+
+        args = request.args
         request_data: Any = request.get_json()
         # print(request_data)
-        
+
         dreamId = args.get("dreamId", default="none")
         is_generating = dreamId
-        
+
         samplers = []
         for sampler in map(lambda x: x.name, modules.sd_samplers.samplers):
             samplers.append(sampler)
-        
+
         prompt = request_data["prompt"] if "prompt" in request_data else ""
-        negative_prompt = request_data["negativePrompt"]  if "negativePrompt" in request_data else ""
+        negative_prompt = request_data["negativePrompt"] if "negativePrompt" in request_data else ""
         prompt_style = ""
         prompt_style2 = ""
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
@@ -417,29 +426,42 @@ def txt2img():
         subseed_strength = 0
         seed_resize_from_h = 0
         seed_resize_from_w = 0
-        seed_enable_extras = False 
+        seed_enable_extras = False
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
         enable_hr = request_data["isHighresFix"] if "isHighresFix" in request_data else False
-        #scale_latent = request_data["isHighresFixScaleLatent"] if "isHighresFixScaleLatent" in request_data else False
+        # scale_latent = request_data["isHighresFixScaleLatent"] if "isHighresFixScaleLatent" in request_data else False
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
-        firstphase_width = 0
-        firstphase_height = 0
-        
-        # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int, sampler_index: int, 
-        # restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, seed: int, subseed: int, 
-        # subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool, 
-        # height: int, width: int, enable_hr: bool, denoising_strength: float, 
-        # firstphase_width: int, firstphase_height: int, *args
-        
+        hr_scale = 0
+        hr_upscaler = 0
+        hr_second_pass_steps = 0
+        hr_resize_x = 0
+        hr_resize_y = 0
+
+        # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
+        # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float,
+        # seed: int, subseed: int, subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int,
+        # seed_enable_extras: bool, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float,
+        # hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, *args
+
+        print("run txt2img 2")
         before_run(request_data)
-        images, generation_info_js, stats = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style, prompt_style2, steps, 
-                                sampler_index, restore_faces, tiling, n_iter, batch_size, 
-                                cfg_scale, seed, subseed, subseed_strength, seed_resize_from_h,
-                                seed_resize_from_w, seed_enable_extras, height, width, enable_hr, 
-                                denoising_strength, firstphase_width, firstphase_height, script_args)
+        print("run txt2img 3")
+        images, generation_info_js, stats, comments = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style,
+                                                                    prompt_style2, steps,
+                                                                    sampler_index, restore_faces, tiling, n_iter,
+                                                                    batch_size,
+                                                                    cfg_scale, seed, subseed, subseed_strength,
+                                                                    seed_resize_from_h,
+                                                                    seed_resize_from_w, seed_enable_extras, height,
+                                                                    width, enable_hr,
+                                                                    denoising_strength, hr_scale, hr_upscaler,
+                                                                    hr_second_pass_steps,
+                                                                    hr_resize_x, hr_resize_y, script_args)
+        print("run txt2img 4")
         after_run(request_data)
+        print("run txt2img 5")
         is_generating = None
         encoded_image = None
         for image in images:
@@ -461,7 +483,7 @@ def txt2img():
         print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
-    
+
 
 @api.route('/api/img2img', methods=['POST'])
 def img2img():
@@ -473,40 +495,38 @@ def img2img():
     if not shared.sd_model:
         return 'still booting up', 500
     try:
-        args = request.args        
+        args = request.args
         request_data: Any = request.get_json()
         # print(request_data)
-        
+
         dreamId = args.get("dreamId", default="none")
         is_generating = dreamId
-        
+
         samplers = []
         for sampler in map(lambda x: x.name, modules.sd_samplers.samplers_for_img2img):
             samplers.append(sampler)
-           
 
         init_img = None
         inputImage = request_data["inputImage"]
         if inputImage.startswith('data:'):
             base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
-            im_bytes = base64.b64decode(base64_data) 
+            im_bytes = base64.b64decode(base64_data)
             image_data = BytesIO(im_bytes)
             init_img = Image.open(image_data)
         else:
             print("downloading inputImage from " + inputImage)
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content))
-        
-        
+
         mode = 0
         init_img_with_mask = None
-        
+
         if "maskImage" in request_data:
             maskImage = request_data["maskImage"]
             if maskImage != "":
                 if maskImage.startswith('data:'):
                     base64_data = re.sub('^data:image/.+;base64,', '', maskImage)
-                    im_bytes = base64.b64decode(base64_data) 
+                    im_bytes = base64.b64decode(base64_data)
                     image_data = BytesIO(im_bytes)
                     mask_info = Image.open(image_data)
                 else:
@@ -518,11 +538,11 @@ def img2img():
                 mode = 1
 
         prompt = request_data["prompt"] if "prompt" in request_data else ""
-        negative_prompt = request_data["negativePrompt"]  if "negativePrompt" in request_data else ""
+        negative_prompt = request_data["negativePrompt"] if "negativePrompt" in request_data else ""
         prompt_style = ""
         prompt_style2 = ""
-        #init_img = None
-        #init_img_with_mask = None
+        # init_img = None
+        # init_img_with_mask = None
         init_img_inpaint = None
         init_mask_inpaint = None
         mask_mode = 0
@@ -545,33 +565,35 @@ def img2img():
         subseed_strength = 0
         seed_resize_from_h = 0
         seed_resize_from_w = 0
-        seed_enable_extras = False 
+        seed_enable_extras = False
         img2img_batch_input_dir = ""
         img2img_batch_output_dir = ""
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
-        
-        
-        
-        # img2img(mode: int, prompt: str, negative_prompt: str, prompt_style: str, 
-        # prompt_style2: str, init_img, init_img_with_mask, init_img_inpaint, init_mask_inpaint, 
-        # mask_mode, steps: int, sampler_index: int, mask_blur: int, inpainting_fill: int, 
-        # restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float, 
-        # denoising_strength: float, seed: int, subseed: int, subseed_strength: float, 
-        # seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool, 
-        # height: int, width: int, resize_mode: int, inpaint_full_res: bool, 
-        # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
-        # img2img_batch_output_dir: str, *args
+
+        # img2img(mode: int, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, init_img,
+        # init_img_with_mask, init_img_with_mask_orig, init_img_inpaint, init_mask_inpaint, mask_mode, steps: int,
+        # sampler_index: int, mask_blur: int, mask_alpha: float, inpainting_fill: int, restore_faces: bool, tiling: bool,
+        # n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float, seed: int, subseed: int,
+        # subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool,
+        # height: int, width: int, resize_mode: int, inpaint_full_res: bool, inpaint_full_res_padding: int,
+        # inpainting_mask_invert: int, img2img_batch_input_dir: str, img2img_batch_output_dir: str, *args):
         before_run(request_data)
-        images, generation_info_js, stats = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style, prompt_style2, init_img, 
-                                init_img_with_mask, init_img_inpaint, init_mask_inpaint, mask_mode, steps, 
-                                sampler_index, mask_blur, inpainting_fill, restore_faces, tiling, n_iter, batch_size, 
-                                cfg_scale, denoising_strength, seed, subseed, subseed_strength, seed_resize_from_h,
-                                seed_resize_from_w, seed_enable_extras, height, width, resize_mode, inpaint_full_res, 
-                                inpaint_full_res_padding,  inpainting_mask_invert, img2img_batch_input_dir,
-                                img2img_batch_output_dir, script_args)
+        images, generation_info_js, stats = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style,
+                                                                    prompt_style2, init_img,
+                                                                    init_img_with_mask, init_img_inpaint,
+                                                                    init_mask_inpaint, mask_mode, steps,
+                                                                    sampler_index, mask_blur, inpainting_fill,
+                                                                    restore_faces, tiling, n_iter, batch_size,
+                                                                    cfg_scale, denoising_strength, seed, subseed,
+                                                                    subseed_strength, seed_resize_from_h,
+                                                                    seed_resize_from_w, seed_enable_extras, height,
+                                                                    width, resize_mode, inpaint_full_res,
+                                                                    inpaint_full_res_padding, inpainting_mask_invert,
+                                                                    img2img_batch_input_dir,
+                                                                    img2img_batch_output_dir, script_args)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -594,7 +616,7 @@ def img2img():
         print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
-    
+
 
 @api.route('/api/upscale', methods=['POST'])
 def upscale():
@@ -606,34 +628,33 @@ def upscale():
     if not shared.sd_model:
         return 'still booting up', 500
     try:
-        args = request.args        
+        args = request.args
         request_data: Any = request.get_json()
         # print(request_data)
-        
+
         dreamId = args.get("dreamId", default="none")
         is_generating = dreamId
-        
+
         samplers = []
         for sampler in map(lambda x: x.name, modules.sd_samplers.samplers_for_img2img):
             samplers.append(sampler)
-           
 
         init_img = None
         inputImage = request_data["inputImage"]
         if inputImage.startswith('data:'):
             base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
-            im_bytes = base64.b64decode(base64_data) 
+            im_bytes = base64.b64decode(base64_data)
             image_data = BytesIO(im_bytes)
             init_img = Image.open(image_data)
         else:
             print("downloading inputImage from " + inputImage)
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content))
-        
+
         extras_mode = 0
         resize_mode = 0
         image_folder = None
-        gfpgan_visibility = 0 
+        gfpgan_visibility = 0
         codeformer_visibility = 1
         codeformer_weight = 0.9
         upscaling_resize = request_data["upscaleFactor"] if "upscaleFactor" in request_data else 2
@@ -647,24 +668,28 @@ def upscale():
         input_dir = ""
         output_dir = ""
         show_extras_results = False
-        
+
         for idx, upscaler in enumerate(shared.sd_upscalers):
             if upscaler.name == extras_upscaler_1_name:
                 extras_upscaler_1 = idx
                 break
-        
+
         # print("using extras_upscaler_1", extras_upscaler_1, extras_upscaler_1_name)        
-                
+
         # run_extras(extras_mode, resize_mode, image, image_folder, input_dir, output_dir, 
         # show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
         # upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
         # extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility
-        
+
         before_run(request_data)
-        images, generation_info_js, stats = modules.extras.run_extras(extras_mode, resize_mode, init_img, 
-                        image_folder, input_dir, output_dir, show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
-                        upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
-                        extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
+        images, generation_info_js, stats = modules.extras.run_extras(extras_mode, resize_mode, init_img,
+                                                                      image_folder, input_dir, output_dir,
+                                                                      show_extras_results, gfpgan_visibility,
+                                                                      codeformer_visibility, codeformer_weight,
+                                                                      upscaling_resize, upscaling_resize_w,
+                                                                      upscaling_resize_h, upscaling_crop,
+                                                                      extras_upscaler_1, extras_upscaler_2,
+                                                                      extras_upscaler_2_visibility)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -686,8 +711,8 @@ def upscale():
         print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
-    
-        
+
+
 @api.route('/api/img2prompt', methods=['POST'])
 def img2prompt():
     global is_generating, webapi_secret
@@ -698,25 +723,25 @@ def img2prompt():
     if not shared.sd_model:
         return 'still booting up', 500
     try:
-        args = request.args        
+        args = request.args
         request_data: Any = request.get_json()
         # print(request_data)
-        
+
         dreamId = args.get("dreamId", default="none")
         is_generating = dreamId
-        
+
         init_img = None
         inputImage = request_data["inputImage"]
         if inputImage.startswith('data:'):
             base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
-            im_bytes = base64.b64decode(base64_data) 
+            im_bytes = base64.b64decode(base64_data)
             image_data = BytesIO(im_bytes)
             init_img = Image.open(image_data).convert('RGB')
         else:
             print("downloading inputImage from " + inputImage)
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content)).convert('RGB')
-        
+
         before_run(request_data)
         prompt = shared.interrogator.interrogate(init_img)
         after_run(request_data)
@@ -731,19 +756,21 @@ def img2prompt():
         print(traceback.format_exc())
         is_generating = None
         return "Error: {0}".format(err), 500
-    
-        
+
+
 def webapi():
     import threading
-    threading.Thread(target=lambda: api.run(host="0.0.0.0", port=42587, debug=True, use_reloader=False, ssl_context='adhoc')).start()
+    threading.Thread(
+        target=lambda: api.run(host="0.0.0.0", port=42587, debug=True, use_reloader=False, ssl_context='adhoc')).start()
+
 
 # source: https://github.com/sd-webui/stable-diffusion-webui/blob/72fb6ffe1fc76b668c822f7a2cc0934dc7bd08af/scripts/webui.py
 def seed_to_int(s):
     if type(s) is int:
         return s
     if s is None or s == '':
-        return random.randint(0, 2**32 - 1)
-    n = abs(int(s) if s.isdigit() else random.Random(s).randint(0, 2**32 - 1))
-    while n >= 2**32:
+        return random.randint(0, 2 ** 32 - 1)
+    n = abs(int(s) if s.isdigit() else random.Random(s).randint(0, 2 ** 32 - 1))
+    while n >= 2 ** 32:
         n = n >> 32
     return n
