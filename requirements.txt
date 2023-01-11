@@ -36,4 +36,4 @@ GitPython
 torchsde
 cryptography==39.0.0
 safetensors
-psutil; sys_platform == 'darwin'
+psutil
