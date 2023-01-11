@@ -28,7 +28,7 @@ markupsafe==2.0.1
 Flask
 flask-sock
 Flask-Cors
-asyncio
+cryptography==39.0.0
 inflection==0.5.1
 GitPython==3.1.27
 torchsde==0.2.5

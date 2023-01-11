@@ -264,12 +264,6 @@ def prepare_environment():
     git_clone(k_diffusion_repo, repo_dir('k-diffusion'), "K-diffusion", k_diffusion_commit_hash)
     git_clone(codeformer_repo, repo_dir('CodeFormer'), "CodeFormer", codeformer_commit_hash)
     git_clone(blip_repo, repo_dir('BLIP'), "BLIP", blip_commit_hash)
-    git_clone(latent_diffusion_repo, repo_dir('latent-diffusion'), "latent-diffusion", latent_diffusion_commit_hash)
-    git_clone(deforum_repo, repo_dir('deforum'), "deforum", deforum_commit_hash)
-    if not os.path.exists(scripts_dir("deforum.py")):
-        os.symlink(os.path.join("..", repo_dir('deforum'), 'deforum.py'), scripts_dir("deforum.py"))
-    if not os.path.exists(scripts_dir("deforum")):
-        os.symlink(os.path.join("..", repo_dir('deforum'), 'deforum'), scripts_dir("deforum"), True)
 
     if not is_installed("lpips"):
         run_pip(f"install -r {os.path.join(repo_dir('CodeFormer'), 'requirements.txt')}", "requirements for CodeFormer")
@@ -315,9 +309,11 @@ def start_webui():
     webapi.webapi()
     webui.webui()
 
-if not install_mode:
-    start_webui()
-else:
-    prepare_environment()
-    print("Install done.")
-    exit(0)
+
+if __name__ == "__main__":
+    if install_mode:
+        prepare_environment()
+        print("Install done.")
+        exit(0)
+    else:
+        start_webui()

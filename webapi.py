@@ -274,6 +274,20 @@ def list_endpoints():
                     "step": 1,
                     "default": 50
                 },
+                "imageResizeMode": "Just resize",
+                "imageResizeModes": ["Just resize", "Crop and resize", "Resize and fill", "Just resize (latent upscale)"],
+                "maskContentMode": "fill",
+                "maskContentModes": ['fill', 'original', 'latent noise', 'latent nothing'],
+                "maskInpaintMode": "Inpaint masked",
+                "maskInpaintModes": ['Inpaint masked', 'Inpaint not masked'],
+                "maskInpaintFullResolution": True,
+                "maskInpaintFullResolutionPadding": True,
+                "maskBlurStrength": {
+                    "min": 0,
+                    "max": 64,
+                    "step": 1,
+                    "default": 4
+                },
                 "guidanceScale": {
                     "min": 1,
                     "max": 50,
@@ -395,9 +409,6 @@ def txt2img():
     if is_generating:
         return 'already generating', 500
     try:
-
-        print("run txt2img")
-
         args = request.args
         request_data: Any = request.get_json()
         # print(request_data)
@@ -445,9 +456,7 @@ def txt2img():
         # seed_enable_extras: bool, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float,
         # hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, *args
 
-        print("run txt2img 2")
         before_run(request_data)
-        print("run txt2img 3")
         images, generation_info_js, stats, comments = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style,
                                                                     prompt_style2, steps,
                                                                     sampler_index, restore_faces, tiling, n_iter,
@@ -459,9 +468,7 @@ def txt2img():
                                                                     denoising_strength, hr_scale, hr_upscaler,
                                                                     hr_second_pass_steps,
                                                                     hr_resize_x, hr_resize_y, script_args)
-        print("run txt2img 4")
         after_run(request_data)
-        print("run txt2img 5")
         is_generating = None
         encoded_image = None
         for image in images:
@@ -477,6 +484,7 @@ def txt2img():
             "generatedImage": encoded_image,
             "seed": str(seed),
             "stats": stats,
+            "comments": comments,
         }
     except BaseException as err:
         print("error", err)
@@ -533,8 +541,8 @@ def img2img():
                     print("downloading " + maskImage)
                     response = requests.get(maskImage)
                     mask_info = Image.open(BytesIO(response.content))
-                init_img = None
                 init_img_with_mask = {"image": init_img, "mask": mask_info}
+                init_img = None
                 mode = 1
 
         prompt = request_data["prompt"] if "prompt" in request_data else ""
@@ -545,12 +553,14 @@ def img2img():
         # init_img_with_mask = None
         init_img_inpaint = None
         init_mask_inpaint = None
+        init_img_with_mask_orig = None
         mask_mode = 0
         resize_mode = 0
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
         sampler_index = samplers.index(sampler) if sampler in samplers else 0
         mask_blur = 0
+        mask_alpha = 0
         inpainting_fill = 0
         restore_faces = False
         tiling = False
@@ -581,11 +591,13 @@ def img2img():
         # height: int, width: int, resize_mode: int, inpaint_full_res: bool, inpaint_full_res_padding: int,
         # inpainting_mask_invert: int, img2img_batch_input_dir: str, img2img_batch_output_dir: str, *args):
         before_run(request_data)
-        images, generation_info_js, stats = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style,
+        images, generation_info_js, stats, comments = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style,
                                                                     prompt_style2, init_img,
-                                                                    init_img_with_mask, init_img_inpaint,
+                                                                    init_img_with_mask, init_img_with_mask_orig,
+                                                                    init_img_inpaint,
                                                                     init_mask_inpaint, mask_mode, steps,
-                                                                    sampler_index, mask_blur, inpainting_fill,
+                                                                    sampler_index, mask_blur, mask_alpha,
+                                                                    inpainting_fill,
                                                                     restore_faces, tiling, n_iter, batch_size,
                                                                     cfg_scale, denoising_strength, seed, subseed,
                                                                     subseed_strength, seed_resize_from_h,
@@ -610,6 +622,7 @@ def img2img():
             "generatedImage": encoded_image,
             "seed": str(seed),
             "stats": stats,
+            "comments": comments,
         }
     except BaseException as err:
         print("error", err)
