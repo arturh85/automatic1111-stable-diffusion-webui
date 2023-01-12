@@ -281,7 +281,12 @@ def list_endpoints():
                 "maskInpaintMode": "Inpaint masked",
                 "maskInpaintModes": ['Inpaint masked', 'Inpaint not masked'],
                 "maskInpaintFullResolution": True,
-                "maskInpaintFullResolutionPadding": True,
+                "maskInpaintFullResolutionPadding": {
+                    "min": 0,
+                    "max": 256,
+                    "step": 4,
+                    "default": 32   
+                },
                 "maskBlurStrength": {
                     "min": 0,
                     "max": 64,
