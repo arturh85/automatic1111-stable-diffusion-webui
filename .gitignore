@@ -36,3 +36,4 @@ notification.mp3
 /test/stdout.txt
 /test/stderr.txt
 /scripts/deforum*
+/cache.json

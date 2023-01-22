@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_sock import Sock
 from PIL import Image
 from io import BytesIO
-from modules import shared
+from modules import shared, deepbooru
 import modules.txt2img
 import modules.img2img
 import modules.extras
@@ -331,6 +331,8 @@ def list_endpoints():
             "path": "/api/img2prompt",
             "inputs": {
                 "image": True,
+                "interrogator": "CLIP",
+                "interrogators": ["CLIP", "DeepBooru"]
             },
             "outputs": {
                 "prompt": True
@@ -749,6 +751,7 @@ def img2prompt():
         is_generating = dreamId
 
         init_img = None
+        interrogator = request_data["interrogator"]
         inputImage = request_data["inputImage"]
         if inputImage.startswith('data:'):
             base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
@@ -761,7 +764,12 @@ def img2prompt():
             init_img = Image.open(BytesIO(response.content)).convert('RGB')
 
         before_run(request_data)
-        prompt = shared.interrogator.interrogate(init_img)
+        
+        if interrogator == "CLIP":
+            prompt = shared.interrogator.interrogate(init_img)
+        else:
+            prompt = deepbooru.model.tag(init_img)
+        
         after_run(request_data)
         is_generating = None
         if shared.state.interrupted:
