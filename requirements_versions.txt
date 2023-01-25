@@ -7,7 +7,7 @@ gradio==3.16.2
 numpy
 Pillow==9.4.0
 realesrgan==0.3.0
-torch
+torch==1.13.1
 omegaconf==2.2.3
 pytorch_lightning==1.7.6
 scikit-image==0.19.2
@@ -23,7 +23,6 @@ resize-right==0.0.2
 torchdiffeq==0.2.3
 kornia==0.6.7
 lark==1.1.2
-functorch==0.2.1
 markupsafe==2.0.1
 Flask
 flask-sock
@@ -34,3 +33,9 @@ GitPython==3.1.27
 torchsde==0.2.5
 safetensors==0.2.7
 httpcore<=0.15
+langchain
+openai
+huggingface_hub
+google-search-results
+wolframalpha
+wikipedia

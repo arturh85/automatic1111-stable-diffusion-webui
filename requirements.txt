@@ -26,7 +26,6 @@ resize-right
 torchdiffeq
 kornia
 lark
-functorch
 Flask
 flask-sock
 Flask-Cors
@@ -37,3 +36,9 @@ torchsde
 cryptography==39.0.0
 safetensors
 psutil
+langchain
+openai
+huggingface_hub
+google-search-results
+wolframalpha
+wikipedia

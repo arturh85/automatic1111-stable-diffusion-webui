@@ -6,12 +6,14 @@ from flask_sock import Sock
 from PIL import Image
 from io import BytesIO
 from modules import shared, deepbooru
+from modules.assistant import ChatAgent
 import modules.txt2img
 import modules.img2img
 import modules.extras
 import modules.sd_samplers
 import modules.sd_models
 from pprint import pprint
+import sys
 
 # https://flask-sse.readthedocs.io/en/latest/advanced.html#channels
 
@@ -418,7 +420,7 @@ def txt2img():
     try:
         args = request.args
         request_data: Any = request.get_json()
-        # print(request_data)
+        print(request_data)
 
         dreamId = args.get("dreamId", default="none")
         is_generating = dreamId
@@ -429,8 +431,7 @@ def txt2img():
 
         prompt = request_data["prompt"] if "prompt" in request_data else ""
         negative_prompt = request_data["negativePrompt"] if "negativePrompt" in request_data else ""
-        prompt_style = ""
-        prompt_style2 = ""
+        prompt_styles = []
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
         sampler_index = samplers.index(sampler) if sampler in samplers else 0
@@ -456,16 +457,16 @@ def txt2img():
         hr_second_pass_steps = 0
         hr_resize_x = 0
         hr_resize_y = 0
+        id_task = None
 
-        # txt2img(prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
+        # txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
         # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float,
         # seed: int, subseed: int, subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int,
         # seed_enable_extras: bool, height: int, width: int, enable_hr: bool, denoising_strength: float, hr_scale: float,
         # hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, *args
 
         before_run(request_data)
-        images, generation_info_js, stats, comments = modules.txt2img.txt2img(prompt, negative_prompt, prompt_style,
-                                                                    prompt_style2, steps,
+        images, generation_info_js, stats, comments = modules.txt2img.txt2img(id_task, prompt, negative_prompt, prompt_styles, steps,
                                                                     sampler_index, restore_faces, tiling, n_iter,
                                                                     batch_size,
                                                                     cfg_scale, seed, subseed, subseed_strength,
@@ -532,6 +533,8 @@ def img2img():
             print("downloading inputImage from " + inputImage)
             response = requests.get(inputImage)
             init_img = Image.open(BytesIO(response.content))
+            
+        # init_img.save("debug_input.png", format="PNG")
 
         mode = 0
         init_img_with_mask = None
@@ -548,20 +551,22 @@ def img2img():
                     print("downloading " + maskImage)
                     response = requests.get(maskImage)
                     mask_info = Image.open(BytesIO(response.content))
+                mask_info = mask_info.resize(init_img.size)
+                # mask_info.save("debug_mask.png", format="PNG")
                 init_img_with_mask = {"image": init_img, "mask": mask_info}
                 init_img = None
-                mode = 1
-
+                mode = 2
+                 
         prompt = request_data["prompt"] if "prompt" in request_data else ""
         negative_prompt = request_data["negativePrompt"] if "negativePrompt" in request_data else ""
-        prompt_style = ""
-        prompt_style2 = ""
+        prompt_styles = []
         # init_img = None
         # init_img_with_mask = None
         init_img_inpaint = None
         init_mask_inpaint = None
         init_img_with_mask_orig = None
-        mask_mode = 0
+        inpaint_color_sketch = None
+        inpaint_color_sketch_orig = None
         resize_mode = 0
         steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
         sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
@@ -583,26 +588,30 @@ def img2img():
         seed_resize_from_h = 0
         seed_resize_from_w = 0
         seed_enable_extras = False
+        sketch = None
         img2img_batch_input_dir = ""
         img2img_batch_output_dir = ""
         height = request_data["height"] if "height" in request_data else 512
         width = request_data["width"] if "width" in request_data else 512
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
+        id_task = None
 
-        # img2img(mode: int, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, init_img,
-        # init_img_with_mask, init_img_with_mask_orig, init_img_inpaint, init_mask_inpaint, mask_mode, steps: int,
-        # sampler_index: int, mask_blur: int, mask_alpha: float, inpainting_fill: int, restore_faces: bool, tiling: bool,
-        # n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float, seed: int, subseed: int,
-        # subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int, seed_enable_extras: bool,
-        # height: int, width: int, resize_mode: int, inpaint_full_res: bool, inpaint_full_res_padding: int,
-        # inpainting_mask_invert: int, img2img_batch_input_dir: str, img2img_batch_output_dir: str, *args):
+        # img2img(id_task: str, mode: int, prompt: str, negative_prompt: str, prompt_styles,
+        # init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, 
+        # init_img_inpaint, init_mask_inpaint, steps: int, sampler_index: int, mask_blur: int, 
+        # mask_alpha: float, inpainting_fill: int, restore_faces: bool, tiling: bool, n_iter: int, 
+        # batch_size: int, cfg_scale: float, denoising_strength: float, seed: int, subseed: int, 
+        # subseed_strength: float, seed_resize_from_h: int, seed_resize_from_w: int,
+        # seed_enable_extras: bool, height: int, width: int, resize_mode: int, inpaint_full_res: bool, 
+        # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
+        # img2img_batch_output_dir: str, *args):
         before_run(request_data)
-        images, generation_info_js, stats, comments = modules.img2img.img2img(mode, prompt, negative_prompt, prompt_style,
-                                                                    prompt_style2, init_img,
-                                                                    init_img_with_mask, init_img_with_mask_orig,
+        images, generation_info_js, stats, comments = modules.img2img.img2img(id_task, mode, prompt, negative_prompt, prompt_styles, 
+                                                                              init_img, sketch, 
+                                                                    init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig,
                                                                     init_img_inpaint,
-                                                                    init_mask_inpaint, mask_mode, steps,
+                                                                    init_mask_inpaint, steps,
                                                                     sampler_index, mask_blur, mask_alpha,
                                                                     inpainting_fill,
                                                                     restore_faces, tiling, n_iter, batch_size,
@@ -783,6 +792,51 @@ def img2prompt():
         is_generating = None
         return "Error: {0}".format(err), 500
 
+@api.route('/assistant', methods=['POST', 'GET'])
+def assistant():
+    json = request.get_json(force=True)
+    history_array = json.get('history')
+
+    prompt = json.get('prompt')
+    print("\n\n#### INPUT ####\n")
+    print(prompt)
+    print("\n\n#### INPUT ####\n")
+
+    chat_agent = ChatAgent(history_array=history_array)
+
+    try:
+        reply = chat_agent.agent_executor.run(input=prompt)
+
+    except ValueError as inst:
+        print('ValueError:\n')
+        print(inst)
+        reply = "Sorry, there was an error processing your request."
+
+    print("\n\n#### REPLY ####\n")
+    print(reply)
+    print("\n\n#### REPLY ####\n")
+
+    pattern = r'\(([a-z]{2}-[A-Z]{2})\)'
+    # Search for the local pattern in the string
+    match = re.search(pattern, reply)
+
+    language = 'en-US'  # default
+    if match:
+        # Get the language code
+        language = match.group(1)
+
+        # Remove the language code from the reply
+        reply = re.sub(pattern, '', reply)
+
+    print("LANG: ", language)
+
+    sys.stdout.flush()
+    return {
+        'prompt': prompt,
+        'reply': reply.strip(),
+        'language': language
+    }
+
 
 def webapi():
     import threading
@@ -800,3 +854,7 @@ def seed_to_int(s):
     while n >= 2 ** 32:
         n = n >> 32
     return n
+
+
+
+
