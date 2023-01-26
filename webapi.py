@@ -415,8 +415,6 @@ def txt2img():
         return 'wrong secret', 401
     if not shared.sd_model:
         return 'still booting up', 500
-    if is_generating:
-        return 'already generating', 500
     try:
         args = request.args
         request_data: Any = request.get_json()
@@ -506,8 +504,6 @@ def img2img():
     global is_generating, webapi_secret
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         return 'wrong secret', 401
-    if is_generating:
-        return 'already generating', 500
     if not shared.sd_model:
         return 'still booting up', 500
     try:
@@ -528,11 +524,11 @@ def img2img():
             base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
             im_bytes = base64.b64decode(base64_data)
             image_data = BytesIO(im_bytes)
-            init_img = Image.open(image_data)
+            init_img = Image.open(image_data).convert('RGB')
         else:
             print("downloading inputImage from " + inputImage)
             response = requests.get(inputImage)
-            init_img = Image.open(BytesIO(response.content))
+            init_img = Image.open(BytesIO(response.content)).convert('RGB')
             
         # init_img.save("debug_input.png", format="PNG")
 
@@ -652,8 +648,6 @@ def upscale():
     global is_generating, webapi_secret
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         return 'wrong secret', 401
-    if is_generating:
-        return 'already generating', 500
     if not shared.sd_model:
         return 'still booting up', 500
     try:
@@ -747,8 +741,6 @@ def img2prompt():
     global is_generating, webapi_secret
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         return 'wrong secret', 401
-    if is_generating:
-        return 'already generating', 500
     if not shared.sd_model:
         return 'still booting up', 500
     try:
@@ -792,12 +784,20 @@ def img2prompt():
         is_generating = None
         return "Error: {0}".format(err), 500
 
-@api.route('/assistant', methods=['POST', 'GET'])
+@api.route('/assistant', methods=['POST'])
 def assistant():
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
+
     json = request.get_json(force=True)
     history_array = json.get('history')
 
     prompt = json.get('prompt')
+    return {
+        'prompt': prompt,
+        'reply': "dummy reply",
+        'language': "en-US",
+    }
     print("\n\n#### INPUT ####\n")
     print(prompt)
     print("\n\n#### INPUT ####\n")
