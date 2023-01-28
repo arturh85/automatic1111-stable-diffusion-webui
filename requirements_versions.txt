@@ -35,6 +35,6 @@ httpcore<=0.15
 langchain
 openai
 huggingface_hub
-google-search-results
+google-search-results==2.4.1
 wolframalpha
 wikipedia

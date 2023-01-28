@@ -451,11 +451,11 @@ def txt2img():
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
         hr_scale = 0
-        hr_upscaler = 0
+        hr_upscaler = None
         hr_second_pass_steps = 0
         hr_resize_x = 0
         hr_resize_y = 0
-        id_task = None
+        id_task = dreamId
 
         # txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
         # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float,
@@ -591,7 +591,7 @@ def img2img():
         width = request_data["width"] if "width" in request_data else 512
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
-        id_task = None
+        id_task = dreamId
 
         # img2img(id_task: str, mode: int, prompt: str, negative_prompt: str, prompt_styles,
         # init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, 
@@ -793,11 +793,11 @@ def assistant():
     history_array = json.get('history')
 
     prompt = json.get('prompt')
-    return {
-        'prompt': prompt,
-        'reply': "dummy reply",
-        'language': "en-US",
-    }
+    # return {
+    #     'prompt': prompt,
+    #     'reply': "dummy reply",
+    #     'language': "en-US",
+    # }
     print("\n\n#### INPUT ####\n")
     print(prompt)
     print("\n\n#### INPUT ####\n")

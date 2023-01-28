@@ -68,7 +68,7 @@ class ChatAgent:
         # set up a Wikipedia docstore agent
         docstore_agent = self._get_docstore_agent()
 
-        giphy = GiphyAPIWrapper()
+        # giphy = GiphyAPIWrapper()
 
         tool_names = get_all_tool_names()
 
