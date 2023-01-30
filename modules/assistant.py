@@ -16,8 +16,10 @@ from datetime import datetime
 
 
 import langchain
-from langchain.cache import InMemoryCache
-langchain.llm_cache = InMemoryCache()
+# from langchain.cache import InMemoryCache
+# langchain.llm_cache = InMemoryCache()
+from langchain.cache import SQLiteCache
+langchain.llm_cache = SQLiteCache(database_path=".langchain.db")
 
 
 news_api_key = os.environ["NEWS_API_KEY"]
@@ -28,7 +30,7 @@ tmdb_bearer_token = os.environ["TMDB_API_KEY"]
 class ChatAgent:
     agent_executor: AgentExecutor = None
 
-    def _get_docstore_agent(self):
+    def _get_docstore_agent(self, model_name):
         docstore = DocstoreExplorer(Wikipedia())
         docstore_tools = [
             Tool(
@@ -40,7 +42,7 @@ class ChatAgent:
                 func=docstore.lookup
             )
         ]
-        docstore_llm = OpenAI(temperature=0, model_name="text-davinci-003")
+        docstore_llm = OpenAI(temperature=0, model_name=model_name)
         docstore_agent = initialize_agent(
             docstore_tools, docstore_llm, agent="react-docstore", verbose=True)
         return docstore_agent
@@ -62,11 +64,11 @@ class ChatAgent:
             return out.strip()
         return lambda_func
 
-    def __init__(self, *, conversation_chain: LLMChain = None, history_array):
-        date = datetime.today().strftime('%B %d, %Y')
+    def __init__(self, *, conversation_chain: LLMChain = None, history_array, model_name="text-davinci-003"):
+        date = datetime.today().strftime('%B %d, %Y at %H:%M')
 
         # set up a Wikipedia docstore agent
-        docstore_agent = self._get_docstore_agent()
+        docstore_agent = self._get_docstore_agent(model_name=model_name)
 
         # giphy = GiphyAPIWrapper()
 
@@ -84,7 +86,7 @@ class ChatAgent:
 
         tools = load_tools(tool_names,
                            llm=OpenAI(temperature=0,
-                                      model_name="text-davinci-003"),
+                                      model_name=model_name),
                            news_api_key=news_api_key,
                            tmdb_bearer_token=tmdb_bearer_token)
 
@@ -112,7 +114,7 @@ class ChatAgent:
                 description="A portal to the internet. Use this when you need to get specific content from a site. Input should be a specific url, and the output will be all the text on that page."
             )
         ]
-        ai_prefix = "AI"
+        ai_prefix = "Assistant"
         human_prefix = "Human"
 
         prefix = f"""{ai_prefix} is a large language model. {ai_prefix} is represented by a 🤖.
@@ -123,14 +125,14 @@ class ChatAgent:
 
 If {ai_prefix} can't provide a good response, it will truthfully answer that it can't help with the user's request.
 
-Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
+Overall, {ai_prefix} is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
 
 The current date is {date}. Questions that refer to a specific date or time period will be interpreted relative to this date.
 
 TOOLS:
 ------
 
-Assistant has access to the following tools:
+{ai_prefix} has access to the following tools:
 """
 
         suffix = f"""
@@ -147,18 +149,20 @@ New input: {{input}}
 {{agent_scratchpad}}
 """
 
+
         memory = ConversationBufferMemory(memory_key="chat_history")
         for item in history_array:
             memory.save_context(
                 {f"{ai_prefix}": item["prompt"]}, {f"{human_prefix}": item["response"]})
 
-        llm = OpenAI(temperature=.5, model_name="text-davinci-003")
+        llm = OpenAI(temperature=.5, model_name=model_name)
         llm_chain = LLMChain(
             llm=llm,
             prompt=ConversationalAgent.create_prompt(
                 tools,
                 ai_prefix=ai_prefix,
                 human_prefix=human_prefix,
+                # prefix=prefix,
                 suffix=suffix
             ),
         )

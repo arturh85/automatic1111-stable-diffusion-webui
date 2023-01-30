@@ -38,3 +38,4 @@ huggingface_hub
 google-search-results==2.4.1
 wolframalpha
 wikipedia
+whisper==1.1.10

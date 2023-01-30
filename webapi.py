@@ -7,11 +7,18 @@ from PIL import Image
 from io import BytesIO
 from modules import shared, deepbooru
 from modules.assistant import ChatAgent
+from copy import copy
+
+import importlib  
+instructPix2pix = importlib.import_module("extensions.instructpix2pix.scripts.instruct-pix2pix", "instruct-pix2pix")
+from langchain.callbacks import get_openai_callback
+
 import modules.txt2img
 import modules.img2img
 import modules.extras
 import modules.sd_samplers
 import modules.sd_models
+from datetime import datetime
 from pprint import pprint
 import sys
 
@@ -155,7 +162,13 @@ def list_endpoints():
         "default": 2
     }
 
+    depthModel = "stable-diffusion-2.1-512-depth-ema.safetensors [59cb052d44]"
+    instructModel = "instruct-pix2pix-00-22000.ckpt [ffd280ddcf]"
     models = modules.sd_models.checkpoint_tiles()
+    print(models)
+    models.remove(instructModel)
+    models.remove(depthModel)
+    
     model = shared.opts.sd_model_checkpoint
 
     hypernetworks = [x for x in shared.hypernetworks.keys()]
@@ -170,7 +183,7 @@ def list_endpoints():
         "default": shared.opts.CLIP_ignore_last_layers
     }
 
-    return jsonify([
+    endpoints = [
         {
             "name": "Text to Image",
             "mode": "txt2img",
@@ -328,6 +341,46 @@ def list_endpoints():
             }
         },
         {
+            "name": "Instruct pix2pix",
+            "mode": "instructPix2pix",
+            "path": "/api/instructPix2pix",
+            "inputs": {
+                "model": instructModel,
+                "models": [instructModel],
+                "image": True,
+                "prompt": True,
+                "negativePrompt": True,
+                "sampleSteps": {
+                    "min": 1,
+                    "max": 200,
+                    "step": 1,
+                    "default": 10
+                },
+                "guidanceScale": {
+                    "min": 1,
+                    "max": 50,
+                    "step": 0.5,
+                    "default": 1.5
+                },
+                "textGuidanceScale": {
+                    "min": 1,
+                    "max": 50,
+                    "step": 0.5,
+                    "default": 7.5
+                },
+                "outputResolution": {
+                    "min": 64,
+                    "max": 4096,
+                    "step": 64,
+                    "default": 512
+                },
+                "seed": True
+            },
+            "outputs": {
+                "image": "png"
+            }
+        },
+        {
             "name": "Image to Prompt",
             "mode": "img2prompt",
             "path": "/api/img2prompt",
@@ -405,7 +458,18 @@ def list_endpoints():
                 "image": "png"
             }
         }
-    ]), 200
+    ]
+    
+    
+    for endpoint in endpoints:
+        if endpoint["mode"] == 'img2img':
+            depthEndpoint = copy(endpoint)
+            depthEndpoint["name"] = "Depth to Image"
+            depthEndpoint["mode"] = "depth2img"
+            depthEndpoint["inputs"]["model"] = depthModel
+            depthEndpoint["inputs"]["models"] = [depthModel]
+            endpoints.insert(2, depthEndpoint)
+    return jsonify(endpoints), 200
 
 
 @api.route('/api/txt2img', methods=['POST'])
@@ -455,7 +519,10 @@ def txt2img():
         hr_second_pass_steps = 0
         hr_resize_x = 0
         hr_resize_y = 0
-        id_task = dreamId
+        id_task = dreamId 
+        is_enabled = False
+        unprompted_seed = None
+        
 
         # txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
         # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float,
@@ -464,16 +531,12 @@ def txt2img():
         # hr_upscaler: str, hr_second_pass_steps: int, hr_resize_x: int, hr_resize_y: int, *args
 
         before_run(request_data)
-        images, generation_info_js, stats, comments = modules.txt2img.txt2img(id_task, prompt, negative_prompt, prompt_styles, steps,
-                                                                    sampler_index, restore_faces, tiling, n_iter,
-                                                                    batch_size,
-                                                                    cfg_scale, seed, subseed, subseed_strength,
-                                                                    seed_resize_from_h,
-                                                                    seed_resize_from_w, seed_enable_extras, height,
-                                                                    width, enable_hr,
-                                                                    denoising_strength, hr_scale, hr_upscaler,
-                                                                    hr_second_pass_steps,
-                                                                    hr_resize_x, hr_resize_y, script_args)
+        images, generation_info_js, stats, comments = modules.txt2img.txt2img(
+            id_task, prompt, negative_prompt, prompt_styles, steps, sampler_index, restore_faces, 
+            tiling, n_iter, batch_size,  cfg_scale, seed, subseed, subseed_strength, 
+            seed_resize_from_h, seed_resize_from_w, seed_enable_extras, height, width, enable_hr,
+            denoising_strength, hr_scale, hr_upscaler, hr_second_pass_steps, hr_resize_x, 
+            hr_resize_y, is_enabled, unprompted_seed, script_args)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -592,6 +655,8 @@ def img2img():
         denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
         script_args = 0
         id_task = dreamId
+        is_enabled = False
+        unprompted_seed = None
 
         # img2img(id_task: str, mode: int, prompt: str, negative_prompt: str, prompt_styles,
         # init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, 
@@ -603,21 +668,14 @@ def img2img():
         # inpaint_full_res_padding: int, inpainting_mask_invert: int, img2img_batch_input_dir: str, 
         # img2img_batch_output_dir: str, *args):
         before_run(request_data)
-        images, generation_info_js, stats, comments = modules.img2img.img2img(id_task, mode, prompt, negative_prompt, prompt_styles, 
-                                                                              init_img, sketch, 
-                                                                    init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig,
-                                                                    init_img_inpaint,
-                                                                    init_mask_inpaint, steps,
-                                                                    sampler_index, mask_blur, mask_alpha,
-                                                                    inpainting_fill,
-                                                                    restore_faces, tiling, n_iter, batch_size,
-                                                                    cfg_scale, denoising_strength, seed, subseed,
-                                                                    subseed_strength, seed_resize_from_h,
-                                                                    seed_resize_from_w, seed_enable_extras, height,
-                                                                    width, resize_mode, inpaint_full_res,
-                                                                    inpaint_full_res_padding, inpainting_mask_invert,
-                                                                    img2img_batch_input_dir,
-                                                                    img2img_batch_output_dir, script_args)
+        images, generation_info_js, stats, comments = modules.img2img.img2img(
+            id_task, mode, prompt, negative_prompt, prompt_styles, init_img, sketch, 
+            init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, init_img_inpaint,
+            init_mask_inpaint, steps, sampler_index, mask_blur, mask_alpha, inpainting_fill, 
+            restore_faces, tiling, n_iter, batch_size, cfg_scale, denoising_strength, seed, subseed,
+            subseed_strength, seed_resize_from_h, seed_resize_from_w, seed_enable_extras, height,
+            width, resize_mode, inpaint_full_res, inpaint_full_res_padding, inpainting_mask_invert,
+            img2img_batch_input_dir, img2img_batch_output_dir, is_enabled, unprompted_seed, script_args)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -635,6 +693,129 @@ def img2img():
             "seed": str(seed),
             "stats": stats,
             "comments": comments,
+        }
+    except BaseException as err:
+        print("error", err)
+        print(traceback.format_exc())
+        is_generating = None
+        return "Error: {0}".format(err), 500
+
+@api.route('/api/instructPix2pix', methods=['POST'])
+def doinstructPix2pix():
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
+    if not shared.sd_model:
+        return 'still booting up', 500
+    try:
+        args = request.args
+        request_data: Any = request.get_json()
+        # print(request_data)
+
+        dreamId = args.get("dreamId", default="none")
+        is_generating = dreamId
+
+        samplers = []
+        for sampler in map(lambda x: x.name, modules.sd_samplers.samplers_for_img2img):
+            samplers.append(sampler)
+
+        init_img = None
+        inputImage = request_data["inputImage"]
+        if inputImage.startswith('data:'):
+            base64_data = re.sub('^data:image/.+;base64,', '', inputImage)
+            im_bytes = base64.b64decode(base64_data)
+            image_data = BytesIO(im_bytes)
+            init_img = Image.open(image_data).convert('RGB')
+        else:
+            print("downloading inputImage from " + inputImage)
+            response = requests.get(inputImage)
+            init_img = Image.open(BytesIO(response.content)).convert('RGB')
+            
+        # init_img.save("debug_input.png", format="PNG")
+
+        prompt = request_data["prompt"] if "prompt" in request_data else ""
+        negative_prompt = request_data["negativePrompt"] if "negativePrompt" in request_data else ""
+        prompt_styles = []
+        # init_img = None
+        # init_img_with_mask = None
+        init_img_inpaint = None
+        init_mask_inpaint = None
+        init_img_with_mask_orig = None
+        inpaint_color_sketch = None
+        inpaint_color_sketch_orig = None
+        resize_mode = 0
+        steps = request_data["sampleSteps"] if "sampleSteps" in request_data else 10
+        sampler = request_data["sampler"] if "sampler" in request_data else "LMS"
+        sampler_index = samplers.index(sampler) if sampler in samplers else 0
+        mask_blur = 0
+        mask_alpha = 0
+        inpainting_fill = 0
+        restore_faces = False
+        tiling = False
+        n_iter = 1
+        inpaint_full_res = False
+        inpaint_full_res_padding = 0
+        inpainting_mask_invert = 0
+        batch_size = 1
+        cfg_scale = request_data["guidanceScale"] if "guidanceScale" in request_data else 1.5
+        txt_cfg_scale = request_data["textGuidanceScale"] if "textGuidanceScale" in request_data else 7.5
+        outputResolution = request_data["outputResolution"] if "outputResolution" in request_data else 512
+        seed_str = request_data["seed"] if "seed" in request_data else ""
+        seed = seed_to_int(seed_str)
+        randomize_seed = seed_str == ""
+        subseed = 0
+        subseed_strength = 0
+        seed_resize_from_h = 0
+        seed_resize_from_w = 0
+        seed_enable_extras = False
+        sketch = None
+        img2img_batch_input_dir = ""
+        img2img_batch_output_dir = ""
+        height = request_data["height"] if "height" in request_data else 512
+        width = request_data["width"] if "width" in request_data else 512
+        denoising_strength = request_data["denoisingStrength"] if "denoisingStrength" in request_data else 0.75
+        script_args = 0
+        id_task = dreamId
+        
+        randomize_cfg = False
+        batch_number = 1
+
+        # generate(
+        # input_image: Image.Image,
+        # instruction: str,
+        # steps: int,
+        # randomize_seed: bool,
+        # seed: int,
+        # randomize_cfg: bool,
+        # text_cfg_scale: float,
+        # image_cfg_scale: float,
+        # negative_prompt: str,
+        # batch_number: int,
+        # scale: int,
+        # ):
+        before_run(request_data)
+        
+        # orig_seed, text_cfg_scale, image_cfg_scale, images_array
+        orig_seed, text_cfg_scale, image_cfg_scale, images_array = instructPix2pix.generate(
+            init_img, prompt, steps, randomize_seed, seed, randomize_cfg, txt_cfg_scale, cfg_scale, 
+            negative_prompt, batch_number, outputResolution)
+        after_run(request_data)
+        is_generating = None
+        encoded_image = None
+        for image in images_array:
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue())
+            img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
+            encoded_image = img_base64.decode("utf-8")
+            break
+        if shared.state.interrupted:
+            return "aborted", 500
+        return {
+            "generatedImage": encoded_image,
+            "seed": str(orig_seed),
+            "stats": "",
+            "comments": "",
         }
     except BaseException as err:
         print("error", err)
@@ -705,14 +886,11 @@ def upscale():
         # extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility
 
         before_run(request_data)
-        images, generation_info_js, stats = modules.extras.run_extras(extras_mode, resize_mode, init_img,
-                                                                      image_folder, input_dir, output_dir,
-                                                                      show_extras_results, gfpgan_visibility,
-                                                                      codeformer_visibility, codeformer_weight,
-                                                                      upscaling_resize, upscaling_resize_w,
-                                                                      upscaling_resize_h, upscaling_crop,
-                                                                      extras_upscaler_1, extras_upscaler_2,
-                                                                      extras_upscaler_2_visibility)
+        images, generation_info_js, stats = modules.extras.run_extras(
+            extras_mode, resize_mode, init_img, image_folder, input_dir, output_dir, 
+            show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight,
+            upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop,
+            extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -791,30 +969,44 @@ def assistant():
 
     json = request.get_json(force=True)
     history_array = json.get('history')
+    model_name = json.get('modelName')
+    print("Model Name: " + model_name)
+    print("\n#### HISTORY ####")
+    for line in history_array:
+        print(line)
+    print("\n#### HISTORY ####")
 
     prompt = json.get('prompt')
-    # return {
-    #     'prompt': prompt,
-    #     'reply': "dummy reply",
-    #     'language': "en-US",
-    # }
-    print("\n\n#### INPUT ####\n")
+    print("\n#### INPUT ####")
     print(prompt)
-    print("\n\n#### INPUT ####\n")
+    print("\n#### INPUT ####")
 
-    chat_agent = ChatAgent(history_array=history_array)
+    date = datetime.today().strftime('%B %d, %Y at %H:%M')
+    return {
+        'prompt': prompt,
+        'reply': "dummy reply on " + date,
+        'intermediateSteps': [],
+        'openAiTokens': 0,
+        'language': "en-US",
+    }
+    chat_agent = ChatAgent(history_array=history_array, model_name=model_name)
 
     try:
-        reply = chat_agent.agent_executor.run(input=prompt)
+        with get_openai_callback() as cb:
+            reply = chat_agent.agent_executor.run(input=prompt)
+            print(cb.total_tokens)
+            print("reply")
+            print(reply)
+            
 
     except ValueError as inst:
         print('ValueError:\n')
         print(inst)
         reply = "Sorry, there was an error processing your request."
 
-    print("\n\n#### REPLY ####\n")
+    print("\n#### REPLY ####")
     print(reply)
-    print("\n\n#### REPLY ####\n")
+    print("\n#### REPLY ####")
 
     pattern = r'\(([a-z]{2}-[A-Z]{2})\)'
     # Search for the local pattern in the string
@@ -834,6 +1026,8 @@ def assistant():
     return {
         'prompt': prompt,
         'reply': reply.strip(),
+        'interintermediateSteps': [],
+        'openAiTokens': 0,
         'language': language
     }
 

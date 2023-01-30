@@ -41,3 +41,4 @@ huggingface_hub
 google-search-results
 wolframalpha
 wikipedia
+whisper
