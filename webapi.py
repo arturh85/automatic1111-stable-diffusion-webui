@@ -475,7 +475,7 @@ def list_endpoints():
             endpoints.insert(2, depthEndpoint)
     return jsonify({"endpoints": endpoints, "embeddings": embeddings}), 200
 
-@api.route('/api/reload', methods=['POST'])
+@api.route('/api/reload', methods=['GET'])
 def reload():
     global is_generating, webapi_secret
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
@@ -483,6 +483,9 @@ def reload():
     if not shared.sd_model:
         return 'still booting up', 500
     try:
+        sd_hijack.model_hijack.embedding_db.load_textual_inversion_embeddings(True)
+        shared.reload_hypernetworks()
+        shared.refresh_checkpoints()
         shared.state.interrupt()
         shared.state.need_restart = True
         return {'result': 'OK'}, 200
