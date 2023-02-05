@@ -479,280 +479,280 @@ def update_foo(widget, state):
         return state
 
 
-with gr.Blocks(css=".gradio-container {background-color: lightgray}") as block:
-    llm_state = gr.State()
-    history_state = gr.State()
-    chain_state = gr.State()
-    express_chain_state = gr.State()
-    tools_list_state = gr.State(TOOLS_DEFAULT_LIST)
-    trace_chain_state = gr.State(False)
-    speak_text_state = gr.State(False)
-    talking_head_state = gr.State(True)
-    monologue_state = gr.State(False)  # Takes the input and repeats it back to the user, optionally transforming it.
+# with gr.Blocks(css=".gradio-container {background-color: lightgray}") as block:
+#     llm_state = gr.State()
+#     history_state = gr.State()
+#     chain_state = gr.State()
+#     express_chain_state = gr.State()
+#     tools_list_state = gr.State(TOOLS_DEFAULT_LIST)
+#     trace_chain_state = gr.State(False)
+#     speak_text_state = gr.State(False)
+#     talking_head_state = gr.State(True)
+#     monologue_state = gr.State(False)  # Takes the input and repeats it back to the user, optionally transforming it.
 
-    # Pertains to Express-inator functionality
-    num_words_state = gr.State(NUM_WORDS_DEFAULT)
-    formality_state = gr.State(FORMALITY_DEFAULT)
-    anticipation_level_state = gr.State(EMOTION_DEFAULT)
-    joy_level_state = gr.State(EMOTION_DEFAULT)
-    trust_level_state = gr.State(EMOTION_DEFAULT)
-    fear_level_state = gr.State(EMOTION_DEFAULT)
-    surprise_level_state = gr.State(EMOTION_DEFAULT)
-    sadness_level_state = gr.State(EMOTION_DEFAULT)
-    disgust_level_state = gr.State(EMOTION_DEFAULT)
-    anger_level_state = gr.State(EMOTION_DEFAULT)
-    lang_level_state = gr.State(LANG_LEVEL_DEFAULT)
-    translate_to_state = gr.State(TRANSLATE_TO_DEFAULT)
-    literary_style_state = gr.State(LITERARY_STYLE_DEFAULT)
+#     # Pertains to Express-inator functionality
+#     num_words_state = gr.State(NUM_WORDS_DEFAULT)
+#     formality_state = gr.State(FORMALITY_DEFAULT)
+#     anticipation_level_state = gr.State(EMOTION_DEFAULT)
+#     joy_level_state = gr.State(EMOTION_DEFAULT)
+#     trust_level_state = gr.State(EMOTION_DEFAULT)
+#     fear_level_state = gr.State(EMOTION_DEFAULT)
+#     surprise_level_state = gr.State(EMOTION_DEFAULT)
+#     sadness_level_state = gr.State(EMOTION_DEFAULT)
+#     disgust_level_state = gr.State(EMOTION_DEFAULT)
+#     anger_level_state = gr.State(EMOTION_DEFAULT)
+#     lang_level_state = gr.State(LANG_LEVEL_DEFAULT)
+#     translate_to_state = gr.State(TRANSLATE_TO_DEFAULT)
+#     literary_style_state = gr.State(LITERARY_STYLE_DEFAULT)
 
-    # Pertains to WHISPER functionality
-    whisper_lang_state = gr.State(WHISPER_DETECT_LANG)
+#     # Pertains to WHISPER functionality
+#     whisper_lang_state = gr.State(WHISPER_DETECT_LANG)
 
-    with gr.Tab("Chat"):
-        with gr.Row():
-            with gr.Column():
-                gr.HTML(
-                    """<b><center>GPT + WolframAlpha + Whisper</center></b>
-                    <p><center>New feature in <b>Translate to</b>: Choose <b>Language level</b> (e.g. for conversation practice or explain like I'm five)</center></p>""")
+#     with gr.Tab("Chat"):
+#         with gr.Row():
+#             with gr.Column():
+#                 gr.HTML(
+#                     """<b><center>GPT + WolframAlpha + Whisper</center></b>
+#                     <p><center>New feature in <b>Translate to</b>: Choose <b>Language level</b> (e.g. for conversation practice or explain like I'm five)</center></p>""")
 
-            openai_api_key_textbox = gr.Textbox(placeholder="Paste your OpenAI API key (sk-...)",
-                                                show_label=False, lines=1, type='password')
+#             openai_api_key_textbox = gr.Textbox(placeholder="Paste your OpenAI API key (sk-...)",
+#                                                 show_label=False, lines=1, type='password')
 
-        with gr.Row():
-            with gr.Column(scale=1, min_width=TALKING_HEAD_WIDTH, visible=True):
-                speak_text_cb = gr.Checkbox(label="Enable speech", value=False)
-                speak_text_cb.change(update_foo, inputs=[speak_text_cb, speak_text_state],
-                                     outputs=[speak_text_state])
+#         with gr.Row():
+#             with gr.Column(scale=1, min_width=TALKING_HEAD_WIDTH, visible=True):
+#                 speak_text_cb = gr.Checkbox(label="Enable speech", value=False)
+#                 speak_text_cb.change(update_foo, inputs=[speak_text_cb, speak_text_state],
+#                                      outputs=[speak_text_state])
 
-                my_file = gr.File(label="Upload a file", type="file", visible=False)
-                tmp_file = gr.File(LOOPING_TALKING_HEAD, visible=False)
-                # tmp_file_url = "/file=" + tmp_file.value['name']
-                htm_video = create_html_video(LOOPING_TALKING_HEAD, TALKING_HEAD_WIDTH)
-                video_html = gr.HTML(htm_video)
+#                 my_file = gr.File(label="Upload a file", type="file", visible=False)
+#                 tmp_file = gr.File(LOOPING_TALKING_HEAD, visible=False)
+#                 # tmp_file_url = "/file=" + tmp_file.value['name']
+#                 htm_video = create_html_video(LOOPING_TALKING_HEAD, TALKING_HEAD_WIDTH)
+#                 video_html = gr.HTML(htm_video)
 
-                # my_aud_file = gr.File(label="Audio file", type="file", visible=True)
-                tmp_aud_file = gr.File("audios/tempfile.mp3", visible=False)
-                tmp_aud_file_url = "/file=" + tmp_aud_file.value['name']
-                htm_audio = f'<audio><source src={tmp_aud_file_url} type="audio/mp3"></audio>'
-                audio_html = gr.HTML(htm_audio)
+#                 # my_aud_file = gr.File(label="Audio file", type="file", visible=True)
+#                 tmp_aud_file = gr.File("audios/tempfile.mp3", visible=False)
+#                 tmp_aud_file_url = "/file=" + tmp_aud_file.value['name']
+#                 htm_audio = f'<audio><source src={tmp_aud_file_url} type="audio/mp3"></audio>'
+#                 audio_html = gr.HTML(htm_audio)
 
-            with gr.Column(scale=7):
-                chatbot = gr.Chatbot()
+#             with gr.Column(scale=7):
+#                 chatbot = gr.Chatbot()
 
-        with gr.Row():
-            message = gr.Textbox(label="What's on your mind??",
-                                 placeholder="What's the answer to life, the universe, and everything?",
-                                 lines=1)
-            submit = gr.Button(value="Send", variant="secondary").style(full_width=False)
+#         with gr.Row():
+#             message = gr.Textbox(label="What's on your mind??",
+#                                  placeholder="What's the answer to life, the universe, and everything?",
+#                                  lines=1)
+#             submit = gr.Button(value="Send", variant="secondary").style(full_width=False)
 
-        # UNCOMMENT TO USE WHISPER
-        with gr.Row():
-            audio_comp = gr.Microphone(source="microphone", type="filepath", label="Just say it!",
-                                       interactive=True, streaming=False)
-            audio_comp.change(transcribe, inputs=[audio_comp, whisper_lang_state], outputs=[message])
+#         # UNCOMMENT TO USE WHISPER
+#         with gr.Row():
+#             audio_comp = gr.Microphone(source="microphone", type="filepath", label="Just say it!",
+#                                        interactive=True, streaming=False)
+#             audio_comp.change(transcribe, inputs=[audio_comp, whisper_lang_state], outputs=[message])
 
-        gr.Examples(
-            examples=["How many people live in Canada?",
-                      "What is 2 to the 30th power?",
-                      "If x+y=10 and x-y=4, what are x and y?",
-                      "How much did it rain in SF today?",
-                      "Get me information about the movie 'Avatar'",
-                      "What are the top tech headlines in the US?",
-                      "On the desk, you see two blue booklets, two purple booklets, and two yellow pairs of sunglasses - "
-                      "if I remove all the pairs of sunglasses from the desk, how many purple items remain on it?"],
-            inputs=message
-        )
+#         gr.Examples(
+#             examples=["How many people live in Canada?",
+#                       "What is 2 to the 30th power?",
+#                       "If x+y=10 and x-y=4, what are x and y?",
+#                       "How much did it rain in SF today?",
+#                       "Get me information about the movie 'Avatar'",
+#                       "What are the top tech headlines in the US?",
+#                       "On the desk, you see two blue booklets, two purple booklets, and two yellow pairs of sunglasses - "
+#                       "if I remove all the pairs of sunglasses from the desk, how many purple items remain on it?"],
+#             inputs=message
+#         )
 
-    with gr.Tab("Settings"):
-        tools_cb_group = gr.CheckboxGroup(label="Tools:", choices=TOOLS_LIST,
-                                          value=TOOLS_DEFAULT_LIST)
-        tools_cb_group.change(update_selected_tools,
-                              inputs=[tools_cb_group, tools_list_state, llm_state],
-                              outputs=[tools_list_state, llm_state, chain_state, express_chain_state])
+#     with gr.Tab("Settings"):
+#         tools_cb_group = gr.CheckboxGroup(label="Tools:", choices=TOOLS_LIST,
+#                                           value=TOOLS_DEFAULT_LIST)
+#         tools_cb_group.change(update_selected_tools,
+#                               inputs=[tools_cb_group, tools_list_state, llm_state],
+#                               outputs=[tools_list_state, llm_state, chain_state, express_chain_state])
 
-        trace_chain_cb = gr.Checkbox(label="Show reasoning chain in chat bubble", value=False)
-        trace_chain_cb.change(update_foo, inputs=[trace_chain_cb, trace_chain_state],
-                              outputs=[trace_chain_state])
+#         trace_chain_cb = gr.Checkbox(label="Show reasoning chain in chat bubble", value=False)
+#         trace_chain_cb.change(update_foo, inputs=[trace_chain_cb, trace_chain_state],
+#                               outputs=[trace_chain_state])
 
-        # speak_text_cb = gr.Checkbox(label="Speak text from agent", value=False)
-        # speak_text_cb.change(update_foo, inputs=[speak_text_cb, speak_text_state],
-        #                      outputs=[speak_text_state])
+#         # speak_text_cb = gr.Checkbox(label="Speak text from agent", value=False)
+#         # speak_text_cb.change(update_foo, inputs=[speak_text_cb, speak_text_state],
+#         #                      outputs=[speak_text_state])
 
-        talking_head_cb = gr.Checkbox(label="Show talking head", value=True)
-        talking_head_cb.change(update_talking_head, inputs=[talking_head_cb, talking_head_state],
-                             outputs=[talking_head_state, video_html])
+#         talking_head_cb = gr.Checkbox(label="Show talking head", value=True)
+#         talking_head_cb.change(update_talking_head, inputs=[talking_head_cb, talking_head_state],
+#                              outputs=[talking_head_state, video_html])
 
-        monologue_cb = gr.Checkbox(label="Babel fish mode (translate/restate what you enter, no conversational agent)",
-                                   value=False)
-        monologue_cb.change(update_foo, inputs=[monologue_cb, monologue_state],
-                            outputs=[monologue_state])
+#         monologue_cb = gr.Checkbox(label="Babel fish mode (translate/restate what you enter, no conversational agent)",
+#                                    value=False)
+#         monologue_cb.change(update_foo, inputs=[monologue_cb, monologue_state],
+#                             outputs=[monologue_state])
 
-    with gr.Tab("Whisper STT"):
-        whisper_lang_radio = gr.Radio(label="Whisper speech-to-text language:", choices=[
-            WHISPER_DETECT_LANG, "Arabic", "Arabic (Gulf)", "Catalan", "Chinese (Cantonese)", "Chinese (Mandarin)",
-            "Danish", "Dutch", "English (Australian)", "English (British)", "English (Indian)", "English (New Zealand)",
-            "English (South African)", "English (US)", "English (Welsh)", "Finnish", "French", "French (Canadian)",
-            "German", "German (Austrian)", "Georgian", "Hindi", "Icelandic", "Indonesian", "Italian", "Japanese",
-            "Korean", "Norwegian", "Polish",
-            "Portuguese (Brazilian)", "Portuguese (European)", "Romanian", "Russian", "Spanish (European)",
-            "Spanish (Mexican)", "Spanish (US)", "Swedish", "Turkish", "Ukrainian", "Welsh"],
-                                      value=WHISPER_DETECT_LANG)
+#     with gr.Tab("Whisper STT"):
+#         whisper_lang_radio = gr.Radio(label="Whisper speech-to-text language:", choices=[
+#             WHISPER_DETECT_LANG, "Arabic", "Arabic (Gulf)", "Catalan", "Chinese (Cantonese)", "Chinese (Mandarin)",
+#             "Danish", "Dutch", "English (Australian)", "English (British)", "English (Indian)", "English (New Zealand)",
+#             "English (South African)", "English (US)", "English (Welsh)", "Finnish", "French", "French (Canadian)",
+#             "German", "German (Austrian)", "Georgian", "Hindi", "Icelandic", "Indonesian", "Italian", "Japanese",
+#             "Korean", "Norwegian", "Polish",
+#             "Portuguese (Brazilian)", "Portuguese (European)", "Romanian", "Russian", "Spanish (European)",
+#             "Spanish (Mexican)", "Spanish (US)", "Swedish", "Turkish", "Ukrainian", "Welsh"],
+#                                       value=WHISPER_DETECT_LANG)
 
-        whisper_lang_radio.change(update_foo,
-                                  inputs=[whisper_lang_radio, whisper_lang_state],
-                                  outputs=[whisper_lang_state])
+#         whisper_lang_radio.change(update_foo,
+#                                   inputs=[whisper_lang_radio, whisper_lang_state],
+#                                   outputs=[whisper_lang_state])
 
-    with gr.Tab("Translate to"):
-        lang_level_radio = gr.Radio(label="Language level:", choices=[
-            LANG_LEVEL_DEFAULT, "1st grade", "2nd grade", "3rd grade", "4th grade", "5th grade", "6th grade",
-            "7th grade", "8th grade", "9th grade", "10th grade", "11th grade", "12th grade", "University"],
-                                    value=LANG_LEVEL_DEFAULT)
-        lang_level_radio.change(update_foo, inputs=[lang_level_radio, lang_level_state],
-                                outputs=[lang_level_state])
+#     with gr.Tab("Translate to"):
+#         lang_level_radio = gr.Radio(label="Language level:", choices=[
+#             LANG_LEVEL_DEFAULT, "1st grade", "2nd grade", "3rd grade", "4th grade", "5th grade", "6th grade",
+#             "7th grade", "8th grade", "9th grade", "10th grade", "11th grade", "12th grade", "University"],
+#                                     value=LANG_LEVEL_DEFAULT)
+#         lang_level_radio.change(update_foo, inputs=[lang_level_radio, lang_level_state],
+#                                 outputs=[lang_level_state])
 
-        translate_to_radio = gr.Radio(label="Language:", choices=[
-            TRANSLATE_TO_DEFAULT, "Arabic", "Arabic (Gulf)", "Catalan", "Chinese (Cantonese)", "Chinese (Mandarin)",
-            "Danish", "Dutch", "English (Australian)", "English (British)", "English (Indian)", "English (New Zealand)",
-            "English (South African)", "English (US)", "English (Welsh)", "Finnish", "French", "French (Canadian)",
-            "German", "German (Austrian)", "Georgian", "Hindi", "Icelandic", "Indonesian", "Italian", "Japanese",
-            "Korean", "Norwegian", "Polish",
-            "Portuguese (Brazilian)", "Portuguese (European)", "Romanian", "Russian", "Spanish (European)",
-            "Spanish (Mexican)", "Spanish (US)", "Swedish", "Turkish", "Ukrainian", "Welsh",
-            "emojis", "Gen Z slang", "how the stereotypical Karen would say it", "Klingon",
-            "Pirate", "Strange Planet expospeak technical talk", "Yoda"],
-                                      value=TRANSLATE_TO_DEFAULT)
+#         translate_to_radio = gr.Radio(label="Language:", choices=[
+#             TRANSLATE_TO_DEFAULT, "Arabic", "Arabic (Gulf)", "Catalan", "Chinese (Cantonese)", "Chinese (Mandarin)",
+#             "Danish", "Dutch", "English (Australian)", "English (British)", "English (Indian)", "English (New Zealand)",
+#             "English (South African)", "English (US)", "English (Welsh)", "Finnish", "French", "French (Canadian)",
+#             "German", "German (Austrian)", "Georgian", "Hindi", "Icelandic", "Indonesian", "Italian", "Japanese",
+#             "Korean", "Norwegian", "Polish",
+#             "Portuguese (Brazilian)", "Portuguese (European)", "Romanian", "Russian", "Spanish (European)",
+#             "Spanish (Mexican)", "Spanish (US)", "Swedish", "Turkish", "Ukrainian", "Welsh",
+#             "emojis", "Gen Z slang", "how the stereotypical Karen would say it", "Klingon",
+#             "Pirate", "Strange Planet expospeak technical talk", "Yoda"],
+#                                       value=TRANSLATE_TO_DEFAULT)
 
-        translate_to_radio.change(update_foo,
-                                  inputs=[translate_to_radio, translate_to_state],
-                                  outputs=[translate_to_state])
+#         translate_to_radio.change(update_foo,
+#                                   inputs=[translate_to_radio, translate_to_state],
+#                                   outputs=[translate_to_state])
 
-    with gr.Tab("Formality"):
-        formality_radio = gr.Radio(label="Formality:",
-                                   choices=[FORMALITY_DEFAULT, "Casual", "Polite", "Honorific"],
-                                   value=FORMALITY_DEFAULT)
-        formality_radio.change(update_foo,
-                               inputs=[formality_radio, formality_state],
-                               outputs=[formality_state])
+#     with gr.Tab("Formality"):
+#         formality_radio = gr.Radio(label="Formality:",
+#                                    choices=[FORMALITY_DEFAULT, "Casual", "Polite", "Honorific"],
+#                                    value=FORMALITY_DEFAULT)
+#         formality_radio.change(update_foo,
+#                                inputs=[formality_radio, formality_state],
+#                                outputs=[formality_state])
 
-    with gr.Tab("Lit style"):
-        literary_style_radio = gr.Radio(label="Literary style:", choices=[
-            LITERARY_STYLE_DEFAULT, "Prose", "Summary", "Outline", "Bullets", "Poetry", "Haiku", "Limerick", "Joke",
-            "Knock-knock"],
-                                        value=LITERARY_STYLE_DEFAULT)
+#     with gr.Tab("Lit style"):
+#         literary_style_radio = gr.Radio(label="Literary style:", choices=[
+#             LITERARY_STYLE_DEFAULT, "Prose", "Summary", "Outline", "Bullets", "Poetry", "Haiku", "Limerick", "Joke",
+#             "Knock-knock"],
+#                                         value=LITERARY_STYLE_DEFAULT)
 
-        literary_style_radio.change(update_foo,
-                                    inputs=[literary_style_radio, literary_style_state],
-                                    outputs=[literary_style_state])
+#         literary_style_radio.change(update_foo,
+#                                     inputs=[literary_style_radio, literary_style_state],
+#                                     outputs=[literary_style_state])
 
-    with gr.Tab("Emotions"):
-        anticipation_level_radio = gr.Radio(label="Anticipation level:",
-                                            choices=[EMOTION_DEFAULT, "Interest", "Anticipation", "Vigilance"],
-                                            value=EMOTION_DEFAULT)
-        anticipation_level_radio.change(update_foo,
-                                        inputs=[anticipation_level_radio, anticipation_level_state],
-                                        outputs=[anticipation_level_state])
+#     with gr.Tab("Emotions"):
+#         anticipation_level_radio = gr.Radio(label="Anticipation level:",
+#                                             choices=[EMOTION_DEFAULT, "Interest", "Anticipation", "Vigilance"],
+#                                             value=EMOTION_DEFAULT)
+#         anticipation_level_radio.change(update_foo,
+#                                         inputs=[anticipation_level_radio, anticipation_level_state],
+#                                         outputs=[anticipation_level_state])
 
-        joy_level_radio = gr.Radio(label="Joy level:",
-                                   choices=[EMOTION_DEFAULT, "Serenity", "Joy", "Ecstasy"],
-                                   value=EMOTION_DEFAULT)
-        joy_level_radio.change(update_foo,
-                               inputs=[joy_level_radio, joy_level_state],
-                               outputs=[joy_level_state])
+#         joy_level_radio = gr.Radio(label="Joy level:",
+#                                    choices=[EMOTION_DEFAULT, "Serenity", "Joy", "Ecstasy"],
+#                                    value=EMOTION_DEFAULT)
+#         joy_level_radio.change(update_foo,
+#                                inputs=[joy_level_radio, joy_level_state],
+#                                outputs=[joy_level_state])
 
-        trust_level_radio = gr.Radio(label="Trust level:",
-                                     choices=[EMOTION_DEFAULT, "Acceptance", "Trust", "Admiration"],
-                                     value=EMOTION_DEFAULT)
-        trust_level_radio.change(update_foo,
-                                 inputs=[trust_level_radio, trust_level_state],
-                                 outputs=[trust_level_state])
+#         trust_level_radio = gr.Radio(label="Trust level:",
+#                                      choices=[EMOTION_DEFAULT, "Acceptance", "Trust", "Admiration"],
+#                                      value=EMOTION_DEFAULT)
+#         trust_level_radio.change(update_foo,
+#                                  inputs=[trust_level_radio, trust_level_state],
+#                                  outputs=[trust_level_state])
 
-        fear_level_radio = gr.Radio(label="Fear level:",
-                                    choices=[EMOTION_DEFAULT, "Apprehension", "Fear", "Terror"],
-                                    value=EMOTION_DEFAULT)
-        fear_level_radio.change(update_foo,
-                                inputs=[fear_level_radio, fear_level_state],
-                                outputs=[fear_level_state])
+#         fear_level_radio = gr.Radio(label="Fear level:",
+#                                     choices=[EMOTION_DEFAULT, "Apprehension", "Fear", "Terror"],
+#                                     value=EMOTION_DEFAULT)
+#         fear_level_radio.change(update_foo,
+#                                 inputs=[fear_level_radio, fear_level_state],
+#                                 outputs=[fear_level_state])
 
-        surprise_level_radio = gr.Radio(label="Surprise level:",
-                                        choices=[EMOTION_DEFAULT, "Distraction", "Surprise", "Amazement"],
-                                        value=EMOTION_DEFAULT)
-        surprise_level_radio.change(update_foo,
-                                    inputs=[surprise_level_radio, surprise_level_state],
-                                    outputs=[surprise_level_state])
+#         surprise_level_radio = gr.Radio(label="Surprise level:",
+#                                         choices=[EMOTION_DEFAULT, "Distraction", "Surprise", "Amazement"],
+#                                         value=EMOTION_DEFAULT)
+#         surprise_level_radio.change(update_foo,
+#                                     inputs=[surprise_level_radio, surprise_level_state],
+#                                     outputs=[surprise_level_state])
 
-        sadness_level_radio = gr.Radio(label="Sadness level:",
-                                       choices=[EMOTION_DEFAULT, "Pensiveness", "Sadness", "Grief"],
-                                       value=EMOTION_DEFAULT)
-        sadness_level_radio.change(update_foo,
-                                   inputs=[sadness_level_radio, sadness_level_state],
-                                   outputs=[sadness_level_state])
+#         sadness_level_radio = gr.Radio(label="Sadness level:",
+#                                        choices=[EMOTION_DEFAULT, "Pensiveness", "Sadness", "Grief"],
+#                                        value=EMOTION_DEFAULT)
+#         sadness_level_radio.change(update_foo,
+#                                    inputs=[sadness_level_radio, sadness_level_state],
+#                                    outputs=[sadness_level_state])
 
-        disgust_level_radio = gr.Radio(label="Disgust level:",
-                                       choices=[EMOTION_DEFAULT, "Boredom", "Disgust", "Loathing"],
-                                       value=EMOTION_DEFAULT)
-        disgust_level_radio.change(update_foo,
-                                   inputs=[disgust_level_radio, disgust_level_state],
-                                   outputs=[disgust_level_state])
+#         disgust_level_radio = gr.Radio(label="Disgust level:",
+#                                        choices=[EMOTION_DEFAULT, "Boredom", "Disgust", "Loathing"],
+#                                        value=EMOTION_DEFAULT)
+#         disgust_level_radio.change(update_foo,
+#                                    inputs=[disgust_level_radio, disgust_level_state],
+#                                    outputs=[disgust_level_state])
 
-        anger_level_radio = gr.Radio(label="Anger level:",
-                                     choices=[EMOTION_DEFAULT, "Annoyance", "Anger", "Rage"],
-                                     value=EMOTION_DEFAULT)
-        anger_level_radio.change(update_foo,
-                                 inputs=[anger_level_radio, anger_level_state],
-                                 outputs=[anger_level_state])
+#         anger_level_radio = gr.Radio(label="Anger level:",
+#                                      choices=[EMOTION_DEFAULT, "Annoyance", "Anger", "Rage"],
+#                                      value=EMOTION_DEFAULT)
+#         anger_level_radio.change(update_foo,
+#                                  inputs=[anger_level_radio, anger_level_state],
+#                                  outputs=[anger_level_state])
 
-    with gr.Tab("Max words"):
-        num_words_slider = gr.Slider(label="Max number of words to generate (0 for don't care)",
-                                     value=NUM_WORDS_DEFAULT, minimum=0, maximum=MAX_WORDS, step=10)
-        num_words_slider.change(update_foo,
-                                inputs=[num_words_slider, num_words_state],
-                                outputs=[num_words_state])
+#     with gr.Tab("Max words"):
+#         num_words_slider = gr.Slider(label="Max number of words to generate (0 for don't care)",
+#                                      value=NUM_WORDS_DEFAULT, minimum=0, maximum=MAX_WORDS, step=10)
+#         num_words_slider.change(update_foo,
+#                                 inputs=[num_words_slider, num_words_state],
+#                                 outputs=[num_words_state])
 
-    gr.HTML("""
-        <p>This application, developed by <a href='https://www.linkedin.com/in/javafxpert/'>James L. Weaver</a>, 
-        demonstrates a conversational agent implemented with OpenAI GPT-3.5 and LangChain. 
-        When necessary, it leverages tools for complex math, searching the internet, and accessing news and weather.
-        Uses talking heads from <a href='https://exh.ai/'>Ex-Human</a>.
-        For faster inference without waiting in queue, you may duplicate the space.
-        </p>""")
+#     gr.HTML("""
+#         <p>This application, developed by <a href='https://www.linkedin.com/in/javafxpert/'>James L. Weaver</a>, 
+#         demonstrates a conversational agent implemented with OpenAI GPT-3.5 and LangChain. 
+#         When necessary, it leverages tools for complex math, searching the internet, and accessing news and weather.
+#         Uses talking heads from <a href='https://exh.ai/'>Ex-Human</a>.
+#         For faster inference without waiting in queue, you may duplicate the space.
+#         </p>""")
 
-    gr.HTML("""
-<form action="https://www.paypal.com/donate" method="post" target="_blank">
-<input type="hidden" name="business" value="AK8BVNALBXSPQ" />
-<input type="hidden" name="no_recurring" value="0" />
-<input type="hidden" name="item_name" value="Please consider helping to defray the cost of APIs such as SerpAPI and WolframAlpha that this app uses." />
-<input type="hidden" name="currency_code" value="USD" />
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
-<img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
-</form>
-    """)
+#     gr.HTML("""
+# <form action="https://www.paypal.com/donate" method="post" target="_blank">
+# <input type="hidden" name="business" value="AK8BVNALBXSPQ" />
+# <input type="hidden" name="no_recurring" value="0" />
+# <input type="hidden" name="item_name" value="Please consider helping to defray the cost of APIs such as SerpAPI and WolframAlpha that this app uses." />
+# <input type="hidden" name="currency_code" value="USD" />
+# <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+# <img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
+# </form>
+#     """)
 
-    gr.HTML("""<center>
-        <a href="https://huggingface.co/spaces/JavaFXpert/Chat-GPT-LangChain?duplicate=true">
-        <img style="margin-top: 0em; margin-bottom: 0em" src="https://bit.ly/3gLdBN6" alt="Duplicate Space"></a>
-        Powered by <a href='https://github.com/hwchase17/langchain'>LangChain 🦜️🔗</a>
-        </center>""")
+#     gr.HTML("""<center>
+#         <a href="https://huggingface.co/spaces/JavaFXpert/Chat-GPT-LangChain?duplicate=true">
+#         <img style="margin-top: 0em; margin-bottom: 0em" src="https://bit.ly/3gLdBN6" alt="Duplicate Space"></a>
+#         Powered by <a href='https://github.com/hwchase17/langchain'>LangChain 🦜️🔗</a>
+#         </center>""")
 
-    message.submit(chat, inputs=[openai_api_key_textbox, message, history_state, chain_state, trace_chain_state,
-                                 speak_text_state, talking_head_state, monologue_state,
-                                 express_chain_state, num_words_state, formality_state,
-                                 anticipation_level_state, joy_level_state, trust_level_state, fear_level_state,
-                                 surprise_level_state, sadness_level_state, disgust_level_state, anger_level_state,
-                                 lang_level_state, translate_to_state, literary_style_state],
-                   outputs=[chatbot, history_state, video_html, my_file, audio_html, tmp_aud_file, message])
-                   # outputs=[chatbot, history_state, audio_html, tmp_aud_file, message])
+#     message.submit(chat, inputs=[openai_api_key_textbox, message, history_state, chain_state, trace_chain_state,
+#                                  speak_text_state, talking_head_state, monologue_state,
+#                                  express_chain_state, num_words_state, formality_state,
+#                                  anticipation_level_state, joy_level_state, trust_level_state, fear_level_state,
+#                                  surprise_level_state, sadness_level_state, disgust_level_state, anger_level_state,
+#                                  lang_level_state, translate_to_state, literary_style_state],
+#                    outputs=[chatbot, history_state, video_html, my_file, audio_html, tmp_aud_file, message])
+#                    # outputs=[chatbot, history_state, audio_html, tmp_aud_file, message])
 
-    submit.click(chat, inputs=[openai_api_key_textbox, message, history_state, chain_state, trace_chain_state,
-                               speak_text_state, talking_head_state, monologue_state,
-                               express_chain_state, num_words_state, formality_state,
-                               anticipation_level_state, joy_level_state, trust_level_state, fear_level_state,
-                               surprise_level_state, sadness_level_state, disgust_level_state, anger_level_state,
-                               lang_level_state, translate_to_state, literary_style_state],
-                 outputs=[chatbot, history_state, video_html, my_file, audio_html, tmp_aud_file, message])
-                 # outputs=[chatbot, history_state, audio_html, tmp_aud_file, message])
+#     submit.click(chat, inputs=[openai_api_key_textbox, message, history_state, chain_state, trace_chain_state,
+#                                speak_text_state, talking_head_state, monologue_state,
+#                                express_chain_state, num_words_state, formality_state,
+#                                anticipation_level_state, joy_level_state, trust_level_state, fear_level_state,
+#                                surprise_level_state, sadness_level_state, disgust_level_state, anger_level_state,
+#                                lang_level_state, translate_to_state, literary_style_state],
+#                  outputs=[chatbot, history_state, video_html, my_file, audio_html, tmp_aud_file, message])
+#                  # outputs=[chatbot, history_state, audio_html, tmp_aud_file, message])
 
-    openai_api_key_textbox.change(set_openai_api_key,
-                                  inputs=[openai_api_key_textbox],
-                                  outputs=[chain_state, express_chain_state, llm_state])
+#     openai_api_key_textbox.change(set_openai_api_key,
+#                                   inputs=[openai_api_key_textbox],
+#                                   outputs=[chain_state, express_chain_state, llm_state])
 
-block.launch(debug=True)
+# block.launch(debug=True)

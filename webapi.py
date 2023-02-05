@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_sock import Sock
 from PIL import Image
 from io import BytesIO
-from modules import shared, deepbooru
+from modules import shared, deepbooru, sd_hijack
 from modules.assistant import ChatAgent
 from copy import copy
 
@@ -154,6 +154,10 @@ def list_endpoints():
     samplers_img2img = {}
     for sampler in map(lambda x: x.name, modules.sd_samplers.samplers_for_img2img):
         samplers_img2img[sampler] = sampler
+        
+    embeddings = sorted(sd_hijack.model_hijack.embedding_db.word_embeddings.keys())
+    
+    print("embeddings: " + str(embeddings))
 
     upscaleFactor = {
         "min": 1,
@@ -469,7 +473,23 @@ def list_endpoints():
             depthEndpoint["inputs"]["model"] = depthModel
             depthEndpoint["inputs"]["models"] = [depthModel]
             endpoints.insert(2, depthEndpoint)
-    return jsonify(endpoints), 200
+    return jsonify({"endpoints": endpoints, "embeddings": embeddings}), 200
+
+@api.route('/api/reload', methods=['POST'])
+def reload():
+    global is_generating, webapi_secret
+    if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
+        return 'wrong secret', 401
+    if not shared.sd_model:
+        return 'still booting up', 500
+    try:
+        shared.state.interrupt()
+        shared.state.need_restart = True
+        return {'result': 'OK'}, 200
+    except BaseException as err:
+        print("error", err)
+        print(traceback.format_exc())
+        return "Error: {0}".format(err), 500
 
 
 @api.route('/api/txt2img', methods=['POST'])
@@ -520,9 +540,9 @@ def txt2img():
         hr_resize_x = 0
         hr_resize_y = 0
         id_task = dreamId 
+        override_settings_texts = []
         is_enabled = False
         unprompted_seed = None
-        
 
         # txt2img(id_task: str, prompt: str, negative_prompt: str, prompt_style: str, prompt_style2: str, steps: int,
         # sampler_index: int, restore_faces: bool, tiling: bool, n_iter: int, batch_size: int, cfg_scale: float,
@@ -536,7 +556,7 @@ def txt2img():
             tiling, n_iter, batch_size,  cfg_scale, seed, subseed, subseed_strength, 
             seed_resize_from_h, seed_resize_from_w, seed_enable_extras, height, width, enable_hr,
             denoising_strength, hr_scale, hr_upscaler, hr_second_pass_steps, hr_resize_x, 
-            hr_resize_y, is_enabled, unprompted_seed, script_args)
+            hr_resize_y, override_settings_texts, is_enabled, unprompted_seed, script_args)
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -657,6 +677,7 @@ def img2img():
         id_task = dreamId
         is_enabled = False
         unprompted_seed = None
+        override_settings_texts = []
 
         # img2img(id_task: str, mode: int, prompt: str, negative_prompt: str, prompt_styles,
         # init_img, sketch, init_img_with_mask, inpaint_color_sketch, inpaint_color_sketch_orig, 
@@ -675,7 +696,8 @@ def img2img():
             restore_faces, tiling, n_iter, batch_size, cfg_scale, denoising_strength, seed, subseed,
             subseed_strength, seed_resize_from_h, seed_resize_from_w, seed_enable_extras, height,
             width, resize_mode, inpaint_full_res, inpaint_full_res_padding, inpainting_mask_invert,
-            img2img_batch_input_dir, img2img_batch_output_dir, is_enabled, unprompted_seed, script_args)
+
+            img2img_batch_input_dir, img2img_batch_output_dir, override_settings_texts, is_enabled, unprompted_seed, script_args)
         after_run(request_data)
         is_generating = None
         encoded_image = None
