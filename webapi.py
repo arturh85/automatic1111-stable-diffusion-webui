@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_sock import Sock
 from PIL import Image
 from io import BytesIO
-from modules import shared, deepbooru, sd_hijack
+from modules import shared, deepbooru, sd_hijack, postprocessing
 from modules.assistant import ChatAgent
 from copy import copy
 
@@ -187,12 +187,20 @@ def list_endpoints():
         "default": shared.opts.CLIP_ignore_last_layers
     }
 
+    count = {
+        "min": 1,
+        "max": 100,
+        "step": 1,
+        "default": 4
+    }
+
     endpoints = [
         {
             "name": "Text to Image",
             "mode": "txt2img",
             "path": "/api/txt2img",
             "inputs": {
+                "count": count,
                 "model": model,
                 "models": models,
                 "hypernetwork": hypernetwork,
@@ -278,6 +286,7 @@ def list_endpoints():
             "mode": "img2img",
             "path": "/api/img2img",
             "inputs": {
+                "count": count,
                 "model": model,
                 "models": models,
                 "hypernetwork": hypernetwork,
@@ -349,6 +358,7 @@ def list_endpoints():
             "mode": "instructPix2pix",
             "path": "/api/instructPix2pix",
             "inputs": {
+                "count": count,
                 "model": instructModel,
                 "models": [instructModel],
                 "image": True,
@@ -402,12 +412,6 @@ def list_endpoints():
             "mode": "upscale",
             "path": "/api/upscale",
             "submodes": [
-                {
-                    "name": "No Upscale",
-                    "submode": "None",
-                    "inputs": {
-                    }
-                },
                 {
                     "name": "Lanczos",
                     "submode": "Lanczos",
@@ -560,6 +564,7 @@ def txt2img():
             seed_resize_from_h, seed_resize_from_w, seed_enable_extras, height, width, enable_hr,
             denoising_strength, hr_scale, hr_upscaler, hr_second_pass_steps, hr_resize_x, 
             hr_resize_y, override_settings_texts, is_enabled, unprompted_seed, script_args)
+        
         after_run(request_data)
         is_generating = None
         encoded_image = None
@@ -890,32 +895,33 @@ def upscale():
         upscaling_resize_w = 0
         upscaling_resize_h = 0
         upscaling_crop = 0
-        extras_upscaler_1_name = request_data["submode"] if "submode" in request_data else "None"
-        extras_upscaler_1 = 0
-        extras_upscaler_2 = 0
+        extras_upscaler_1 = request_data["submode"] if "submode" in request_data else "None"
+        extras_upscaler_2 = None
         extras_upscaler_2_visibility = 0
         input_dir = ""
         output_dir = ""
         show_extras_results = False
+        upscale_first = False
 
-        for idx, upscaler in enumerate(shared.sd_upscalers):
-            if upscaler.name == extras_upscaler_1_name:
-                extras_upscaler_1 = idx
-                break
+        # for idx, upscaler in enumerate(shared.sd_upscalers):
+        #     if upscaler.name == extras_upscaler_1_name:
+        #         extras_upscaler_1 = idx
+        #         break
 
         # print("using extras_upscaler_1", extras_upscaler_1, extras_upscaler_1_name)        
 
-        # run_extras(extras_mode, resize_mode, image, image_folder, input_dir, output_dir, 
+        # def run_extras(extras_mode, resize_mode, image, image_folder, input_dir, output_dir, 
         # show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight, 
         # upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop, 
-        # extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility
+        # extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility, 
+        # upscale_first: bool, save_output: bool = True):
 
         before_run(request_data)
-        images, generation_info_js, stats = modules.extras.run_extras(
+        images, generation_info_js, stats = postprocessing.run_extras(
             extras_mode, resize_mode, init_img, image_folder, input_dir, output_dir, 
             show_extras_results, gfpgan_visibility, codeformer_visibility, codeformer_weight,
             upscaling_resize, upscaling_resize_w, upscaling_resize_h, upscaling_crop,
-            extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility)
+            extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility, upscale_first, save_output = False)
         after_run(request_data)
         is_generating = None
         encoded_image = None
