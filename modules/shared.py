@@ -181,13 +181,18 @@ class State:
     current_image_sampling_step = 0
     id_live_preview = 0
 
-    listeners = []
+    listeners = {}
 
-    def register_listener(self, listener):
-        self.listeners.append(listener)
+    def register_listener(self, listener, listener_id):
+        self.listeners[listener_id] = listener
 
-    def clear_listeners(self):
-        self.listeners = []
+    def clear_listener(self, listener_id):
+        self.listeners.pop(listener_id)
+        
+    def call_listeners(self):
+        for listener in self.listeners.values():
+            listener()
+        
 
     @property
     def sampling_step(self):
@@ -196,8 +201,9 @@ class State:
     @sampling_step.setter
     def sampling_step(self, value):
         if value != self._sampling_step:
-            for listener in self.listeners:
-                listener()
+            self.set_current_image()
+            self.call_listeners()
+            self.current_image = None
         self._sampling_step = value
 
     @sampling_step.deleter
@@ -262,8 +268,8 @@ class State:
 
     def set_current_image(self):
         """sets self.current_image from self.current_latent if enough sampling steps have been made after the last call to this"""
-        if not parallel_processing_allowed:
-            return
+        # if not parallel_processing_allowed:
+            # return
 
         if self.sampling_step - self.current_image_sampling_step >= opts.show_progress_every_n_steps and opts.live_previews_enable and opts.show_progress_every_n_steps != -1:
             self.do_set_current_image()

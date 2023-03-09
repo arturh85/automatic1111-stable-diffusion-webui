@@ -36,9 +36,8 @@ cryptography==39.0.0
 safetensors
 psutil
 langchain
-openai
 huggingface_hub
 google-search-results
 wolframalpha
-wikipedia
 whisper
+toml

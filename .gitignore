@@ -3,6 +3,7 @@ __pycache__
 *.safetensors
 *.pth
 /.langchain.db
+/debug_*
 /ESRGAN/*
 /SwinIR/*
 /repositories

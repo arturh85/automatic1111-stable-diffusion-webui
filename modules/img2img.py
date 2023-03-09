@@ -91,9 +91,13 @@ def img2img(id_task: str, mode: int, prompt: str, negative_prompt: str, prompt_s
         mask = None
     elif mode == 2:  # inpaint
         image, mask = init_img_with_mask["image"], init_img_with_mask["mask"]
+        mask.save("debug2_mask1.png", format="PNG")
         alpha_mask = ImageOps.invert(image.split()[-1]).convert('L').point(lambda x: 255 if x > 0 else 0, mode='1')
+        alpha_mask.save("debug2_alphamask.png", format="PNG")
         mask = ImageChops.lighter(alpha_mask, mask.convert('L')).convert('L')
         image = image.convert("RGB")
+        mask.save("debug2_mask2.png", format="PNG")
+        image.save("debug2_mask_image.png", format="PNG")
     elif mode == 3:  # inpaint sketch
         image = inpaint_color_sketch
         orig = inpaint_color_sketch_orig or inpaint_color_sketch

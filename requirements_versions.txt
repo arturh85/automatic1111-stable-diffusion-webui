@@ -33,10 +33,9 @@ torchsde==0.2.5
 safetensors==0.2.7
 httpcore<=0.15
 langchain
-openai
 huggingface_hub
 google-search-results==2.4.1
 wolframalpha
-wikipedia
 whisper==1.1.10
 fastapi==0.90.1
+toml
