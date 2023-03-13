@@ -711,7 +711,7 @@ def entity_update():
         elif entityType == "embedding":
             targetToml = TOML_EMBEDDINGS
         elif entityType == "hypernetwork":
-            targetToml = TOML_HYPERNETWORKS            
+            targetToml = TOML_HYPERNETWORKS
         elif entityType == "lora":
             targetToml = TOML_LORA            
         elif entityType == "controlnet":
@@ -740,7 +740,7 @@ def entity_update():
 
     
 
-@api.route('/api/download', methods=['POST'])
+@api.route('/api/entityDownload', methods=['POST'])
 def download():
     global is_generating, webapi_secret, controlnetData
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
@@ -757,7 +757,7 @@ def download():
         name = request_data.get("name") 
         description = request_data.get("description") 
         baseModel = request_data.get("baseModel") 
-        source = request_data.get("source") 
+        sourceUrl = request_data.get("sourceUrl") 
         imageUrl = request_data.get("imageUrl") 
         words = request_data.get("words") 
         category = request_data.get("category")
@@ -780,6 +780,8 @@ def download():
         
         from pathlib import Path
         
+        nowstr = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z:%M")
+        
         # model, embedding, hypernetwork, lora, controlnet
         if downloadType == "model":
             targetPath = PATH_MODELS + filename
@@ -788,8 +790,8 @@ def download():
                 targetTomlValue = {
                     "name": name,
                     "description": description,
-                    "added": str(datetime.now()),
-                    "source": source,
+                    "added": nowstr,
+                    "sourceUrl": sourceUrl,
                     "words": words,
                     "category": category,
                     "baseModel": baseModel,
@@ -803,8 +805,8 @@ def download():
             targetTomlValue = {
                 "name": name,
                 "description": description,
-                "added": str(datetime.now()),
-                "source": source,
+                "added": nowstr,
+                "sourceUrl": sourceUrl,
                 "baseModel": baseModel,
                 "category": category,
                 "imageUrl": imageUrl,
@@ -816,8 +818,8 @@ def download():
             targetTomlValue = {
                 "name": name,
                 "description": description,
-                "added": str(datetime.now()),
-                "source": source,
+                "added": nowstr,
+                "sourceUrl": sourceUrl,
                 "baseModel": baseModel,
                 "words": words,
                 "category": category,
@@ -831,8 +833,8 @@ def download():
             targetTomlValue = {
                 "name": name,
                 "description": description,
-                "added": str(datetime.now()),
-                "source": source,
+                "added": nowstr,
+                "sourceUrl": sourceUrl,
                 "baseModel": baseModel,
                 "words": words,
                 "category": category,
@@ -845,8 +847,8 @@ def download():
             targetTomlValue = {
                 "name": name,
                 "description": description,
-                "added": str(datetime.now()),
-                "source": source,
+                "added": nowstr,
+                "sourceUrl": sourceUrl,
                 "category": category,
                 "modules": words,
                 "baseModel": baseModel,
@@ -875,7 +877,7 @@ def download():
                         f.flush()                  
                         downloaded_size += len(chunk)      
                         now = time.time()
-                        if now - last_download_update > 2.0:
+                        if now - last_download_update > 1.0:
                             last_download_update = now
                             speed = calculate_download_speed(downloaded_size, start_time)
                             progress = downloaded_size / total_size * 100
@@ -1179,6 +1181,7 @@ def txt2img():
             hr_resize_y, override_settings_texts, 
             script_args, 
             False,
+            False,
             controlnet1_is_enabled, 
             controlnet1_module, 
             controlnet1_model, 
@@ -1194,6 +1197,7 @@ def txt2img():
             controlnet1_guidance_start,
             controlnet1_guidance_end,
             controlnet1_guess_mode,
+                       
             
             controlnet2_is_enabled, 
             controlnet2_module, 

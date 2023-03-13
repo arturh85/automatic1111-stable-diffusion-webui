@@ -187,7 +187,8 @@ class State:
         self.listeners[listener_id] = listener
 
     def clear_listener(self, listener_id):
-        self.listeners.pop(listener_id)
+        if listener_id in self.listeners:
+            self.listeners.pop(listener_id)
         
     def call_listeners(self):
         for listener in self.listeners.values():
