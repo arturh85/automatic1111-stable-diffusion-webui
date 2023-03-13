@@ -28,7 +28,7 @@ flask-sock
 Flask-Cors
 cryptography==39.0.0
 inflection==0.5.1
-GitPython==3.1.27
+GitPython==3.1.30
 torchsde==0.2.5
 safetensors==0.2.7
 httpcore<=0.15
@@ -37,5 +37,5 @@ huggingface_hub
 google-search-results==2.4.1
 wolframalpha
 whisper==1.1.10
-fastapi==0.90.1
+fastapi==0.94.0
 toml
