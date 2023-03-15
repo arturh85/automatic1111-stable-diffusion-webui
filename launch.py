@@ -27,7 +27,8 @@ torch_command = os.environ.get('TORCH_COMMAND', "pip install torch==1.12.1+cu113
 requirements_file = os.environ.get('REQS_FILE', "requirements_versions.txt")
 commandline_args = os.environ.get('COMMANDLINE_ARGS', "")
 
-args = shlex.split(commandline_args)
+args_other = shlex.split(commandline_args)
+
 index_url = os.environ.get('INDEX_URL', "")
 stored_commit_hash = None
 skip_install = False
@@ -82,7 +83,7 @@ def extract_arg(args, name):
     return [x for x in args if x != name], name in args
 
 
-args, skip_torch_cuda_test = extract_arg(args, '--skip-torch-cuda-test')
+args_other, skip_torch_cuda_test = extract_arg(args_other, '--skip-torch-cuda-test')
 
 install_mode = len(sys.argv) > 1 and sys.argv[1] == "install"
 

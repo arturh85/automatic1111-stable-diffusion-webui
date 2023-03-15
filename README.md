@@ -1,7 +1,14 @@
-# Stable Diffusion web UI
+# Fork of Stable Diffusion web UI
 A browser interface based on Gradio library for Stable Diffusion.
 
 ![](screenshot.png)
+
+## Docker commands
+
+    docker build . -t automatic -t arturh85/automatic1111_stable-diffusion-webui:latest -t arturh85/automatic1111_stable-diffusion-webui:0.4.0
+    docker run  
+
+
 
 ## Features
 [Detailed feature showcase with images](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features):

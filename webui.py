@@ -141,7 +141,7 @@ def initialize():
         exit(1)
     startup_timer.record("load SD checkpoint")
 
-    shared.opts.data["sd_model_checkpoint"] = shared.sd_model.sd_checkpoint_info.title
+    shared.opts.data["sd_model_checkpoint"] = shared.sd_model.sd_checkpoint_info.title if shared.sd_model else ""
 
     shared.opts.onchange("sd_model_checkpoint", wrap_queued_call(lambda: modules.sd_models.reload_model_weights()))
     shared.opts.onchange("sd_vae", wrap_queued_call(lambda: modules.sd_vae.reload_vae_weights()), call=False)

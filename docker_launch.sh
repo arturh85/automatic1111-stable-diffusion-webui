@@ -29,4 +29,4 @@ delimiter="################################################################"
 printf "\n%s\n" "${delimiter}"
 printf "Launching launch.py..."
 printf "\n%s\n" "${delimiter}"
-"${python_cmd}" launch.py --no-half --precision full
+"${python_cmd}" launch.py --no-half --precision full --no-download-sd-model

@@ -168,8 +168,9 @@ def select_checkpoint():
         print(f" - directory {model_path}", file=sys.stderr)
         if shared.cmd_opts.ckpt_dir is not None:
             print(f" - directory {os.path.abspath(shared.cmd_opts.ckpt_dir)}", file=sys.stderr)
-        print("Can't run without a checkpoint. Find and place a .ckpt or .safetensors file into any of those locations. The program will exit.", file=sys.stderr)
-        exit(1)
+        #print("Can't run without a checkpoint. Find and place a .ckpt or .safetensors file into any of those locations. The program will exit.", file=sys.stderr)
+        #exit(1)
+        return None
 
     checkpoint_info = next(iter(checkpoints_list.values()))
     if model_checkpoint is not None:
@@ -366,6 +367,10 @@ sd2_clip_weight = 'cond_stage_model.model.transformer.resblocks.0.attn.in_proj_w
 def load_model(checkpoint_info=None, already_loaded_state_dict=None, time_taken_to_load_state_dict=None):
     from modules import lowvram, sd_hijack
     checkpoint_info = checkpoint_info or select_checkpoint()
+    
+    if not checkpoint_info:
+        print("No checkpoint info found. Abort load_model")
+        return
 
     if shared.sd_model:
         sd_hijack.model_hijack.undo_hijack(shared.sd_model)
@@ -441,6 +446,9 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None, time_taken_
 def reload_model_weights(sd_model=None, info=None):
     from modules import lowvram, devices, sd_hijack
     checkpoint_info = info or select_checkpoint()
+    
+    if not checkpoint_info:
+        return
 
     if not sd_model:
         sd_model = shared.sd_model

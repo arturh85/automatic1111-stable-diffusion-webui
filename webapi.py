@@ -41,12 +41,26 @@ backupSysPath = sys.path
 sys.path = ["extensions/controlnet"] + sys.path
 controlnet = importlib.import_module("extensions.controlnet.scripts.controlnet")
 controlnetModules = [
-    "canny","depth","depth_leres","hed","mlsd","normal_map","openpose","pidinet","scribble",
-    "fake_scribble","segmentation",
+"canny",
+"depth",
+"depth_leres",
+"hed",
+"mlsd",
+"normal_map",
+"openpose",
+"openpose_hand",
+"clip_vision",
+"color",
+"pidinet",
+"scribble",
+"fake_scribble",
+"segmentation",
+"binary",
 ]
 sys.path = backupSysPath
 
 from langchain.callbacks import get_openai_callback
+from pathlib import Path
 
 import modules.txt2img
 import modules.img2img
@@ -60,6 +74,7 @@ from pprint import pprint
 import sys
 
 
+PATH_TEMP = "tmp/"
 PATH_MODELS = "models/Stable-diffusion/"
 PATH_EMBEDDINGS = "embeddings/"
 PATH_LORA = "models/Lora/"
@@ -71,6 +86,29 @@ TOML_EMBEDDINGS = PATH_EMBEDDINGS + "_embeddings.toml"
 TOML_LORA = PATH_LORA + "_loras.toml"
 TOML_HYPERNETWORKS = PATH_HYPERNETWORKS + "_hypernetworks.toml"
 TOML_CONTROLNET = PATH_CONTROLNET + "_controlnets.toml"
+
+if not os.path.exists(PATH_TEMP):
+    os.makedirs(PATH_TEMP)    
+if not os.path.exists(PATH_MODELS):
+    os.makedirs(PATH_MODELS)    
+if not os.path.exists(PATH_EMBEDDINGS):
+    os.makedirs(PATH_EMBEDDINGS)    
+if not os.path.exists(PATH_LORA):
+    os.makedirs(PATH_LORA)    
+if not os.path.exists(PATH_HYPERNETWORKS):
+    os.makedirs(PATH_HYPERNETWORKS)    
+if not os.path.exists(PATH_CONTROLNET):
+    os.makedirs(PATH_CONTROLNET)
+if not os.path.exists(TOML_MODELS):
+    Path(TOML_MODELS).touch()    
+if not os.path.exists(TOML_EMBEDDINGS):
+    Path(TOML_EMBEDDINGS).touch()    
+if not os.path.exists(TOML_LORA):
+    Path(TOML_LORA).touch()    
+if not os.path.exists(TOML_HYPERNETWORKS):
+    Path(TOML_HYPERNETWORKS).touch()    
+if not os.path.exists(TOML_CONTROLNET):
+    Path(TOML_CONTROLNET).touch()
 
 # https://flask-sse.readthedocs.io/en/latest/advanced.html#channels
 
@@ -94,23 +132,31 @@ next_event_id = 0
 
 def send_update(ws):
     global is_generating
-    encoded_image = ""
-    if shared.state.current_image:
-        buffered = BytesIO()
-        shared.state.current_image.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue())
-        img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
-        encoded_image = img_base64.decode("utf-8")
+    
+    try:
+        encoded_image = ""
+        if shared.state.current_image:
+            buffered = BytesIO()
+            shared.state.current_image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue())
+            img_base64 = bytes("data:image/png;base64,", encoding='utf-8') + img_str
+            encoded_image = img_base64.decode("utf-8")
 
-    ws.send(json.dumps({
-        "isGenerating": is_generating,
-        "image": encoded_image,
-        "jobNo": shared.state.job_no,
-        "jobCount": shared.state.job_count,
-        "samplingStep": shared.state.sampling_step,
-        "samplingSteps": shared.state.sampling_steps,
-        "fileDownloads": file_downloads,
-    }, sort_keys=False))
+        ws.send(json.dumps({
+            "isGenerating": is_generating,
+            "image": encoded_image,
+            "jobNo": shared.state.job_no,
+            "jobCount": shared.state.job_count,
+            "samplingStep": shared.state.sampling_step,
+            "samplingSteps": shared.state.sampling_steps,
+            "fileDownloads": file_downloads,
+        }, sort_keys=False))
+    except BaseException as err:
+        print("error", err)
+        print(traceback.format_exc())
+        pass
+    except: 
+        pass
 
 @sock.route('/events')
 def echo(ws):
@@ -266,9 +312,14 @@ def list_endpoints():
     }
     
     
-    
     with open(TOML_CONTROLNET, "r+") as f:
         controlnetData = toml.load(f)
+        
+    cn_models = []
+    for k, v in controlnet.cn_models.items():
+        if v and controlnet.cn_models_dir in v:
+            cn_models.append(k)
+    controlnetModels = sorted(cn_models)
     
     controlnetWeight = {
         "min": 0.0,
@@ -314,6 +365,7 @@ def list_endpoints():
                 "hypernetworks": hypernetworks,
                 "clipIgnoreLastLayers": clipIgnoreLastLayers,
                 
+                "controlnetModels": controlnetModels,
                 "controlnetModules": controlnetModules,
                 "controlnetWeight": controlnetWeight,
                 "controlnetGuidanceStrength": controlnetGuidanceStrength,
@@ -418,6 +470,8 @@ def list_endpoints():
                 "hypernetwork": hypernetwork,
                 "hypernetworks": hypernetworks,
                 "clipIgnoreLastLayers": clipIgnoreLastLayers,
+                
+                "controlnetModels": controlnetModels,
                 "controlnetModules": controlnetModules,
                 "controlnetWeight": controlnetWeight,
                 "controlnetGuidanceStrength": controlnetGuidanceStrength,
@@ -612,12 +666,13 @@ def reload():
     global webapi_secret
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         return 'wrong secret', 401
-    if not shared.sd_model:
-        return 'still booting up', 500
     try:
-        sd_hijack.model_hijack.embedding_db.load_textual_inversion_embeddings(True)
+        loraModule.list_available_loras()
         shared.reload_hypernetworks()
         shared.refresh_checkpoints()
+        if not shared.sd_model:
+            modules.sd_models.load_model()
+        sd_hijack.model_hijack.embedding_db.load_textual_inversion_embeddings(True)
         shared.state.interrupt()
         shared.state.need_restart = True
         return {'result': 'OK'}, 200
@@ -641,8 +696,6 @@ def entity_delete():
 
         deleteDirectory = None
         deleteFileStart = entityKey
-
-        from pathlib import Path
         
         # model, embedding, hypernetwork, lora, controlnet
         if entityType == "model":
@@ -745,8 +798,6 @@ def download():
     global is_generating, webapi_secret, controlnetData
     if webapi_secret and request.headers.get('webapi-secret', None) != webapi_secret:
         return 'wrong secret', 401
-    if not shared.sd_model:
-        return 'still booting up', 500
     try:
         request_data: Any = request.get_json()
         queueId = request_data.get("id")
@@ -762,24 +813,18 @@ def download():
         words = request_data.get("words") 
         category = request_data.get("category")
         
-        response = requests.head(downloadUrl)
-        total_size = int(response.headers.get('content-length', 0))
-        if total_size == 0:
-            print("no content length given, calculating based on mb size " + str(totalSizeMb))
-            total_size = int(totalSizeMb * 1024.0 * 1024.0)
+        total_size = int(totalSizeMb * 1024.0 * 1024.0)
         
         start_time = time.time()
         downloaded_size = 0
         speed = 0
         
-        tmpPath = "tmp/" + filename
+        tmpPath = PATH_TEMP + filename
         targetPath = None
         targetToml = None
         targetTomlKey = filename
         targetTomlValue = None
-        
-        from pathlib import Path
-        
+                
         nowstr = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z:%M")
         
         # model, embedding, hypernetwork, lora, controlnet
@@ -856,7 +901,7 @@ def download():
             }
         else:
             return {'result': 'INVALID'}, 500
-                        
+        
         def send_download_update(status, errorMessage = None):
             file_downloads[queueId] = {
                 'totalSizeMb': total_size / 1024.0 / 1024.0,
@@ -883,7 +928,6 @@ def download():
                             progress = downloaded_size / total_size * 100
                             print("downloading progress " + "{:.2f}".format(progress) + "%")
                             send_download_update('downloading')
-                        
             print("download done at " + tmpPath)
             shutil.move(tmpPath, targetPath)
             print("download moved to " + targetPath)
@@ -895,6 +939,7 @@ def download():
                     
                 with open(targetToml, "w") as f:
                     f.write(toml.dumps(data))
+                    print("saved " + targetToml)
                 
                 if downloadType == "controlnet":
                     controlnetData = data
@@ -932,15 +977,9 @@ def calculate_download_speed(downloaded_size, start_time):
 
 def get_controlnet_model(name):
     global controlnetData
-    if not name in controlnetData:
-        return 'None'
-    model = controlnetData[name]['model']
-    models = list(controlnet.cn_models.keys())
-    
-    for candidate in models:
-        if model in candidate:
-            return candidate
-    
+    for k,v in controlnetData.items():
+        if v["module"] == name:
+            return k
     return 'None'
 
     
@@ -1004,7 +1043,7 @@ def txt2img():
         controlnet1_module = request_data["controlnet1Module"] if "controlnet1Module" in request_data else "none"
         
         
-        controlnet1_model = get_controlnet_model(controlnet1_module)
+        controlnet1_model = request_data["controlnet1Model"] if "controlnet1Model" in request_data else get_controlnet_model(controlnet1_module)
         if "controlnet1Preprocess" in request_data and not request_data['controlnet1Preprocess']:
             controlnet1_module = "none"
         controlnet1_weight = request_data["controlnet1Weight"] if "controlnet1Weight" in request_data else 1
@@ -1020,7 +1059,7 @@ def txt2img():
         controlnet1_threshold_b = request_data["controlnet1ThresholdB"] if "controlnet1ThresholdB" in request_data else 0.1
         
         controlnet2_module = request_data["controlnet2Module"] if "controlnet2Module" in request_data else "none"
-        controlnet2_model = get_controlnet_model(controlnet2_module)
+        controlnet2_model = request_data["controlnet2Model"] if "controlnet2Model" in request_data else get_controlnet_model(controlnet2_module)
         if "controlnet2Preprocess" in request_data and not request_data['controlnet2Preprocess']:
             controlnet2_module = "none"
         controlnet2_weight = request_data["controlnet2Weight"] if "controlnet2Weight" in request_data else 1
@@ -1036,7 +1075,7 @@ def txt2img():
         controlnet2_threshold_b = request_data["controlnet2ThresholdB"] if "controlnet2ThresholdB" in request_data else 0.1
         
         controlnet3_module = request_data["controlnet3Module"] if "controlnet3Module" in request_data else "none"
-        controlnet3_model = get_controlnet_model(controlnet3_module)
+        controlnet3_model = request_data["controlnet3Model"] if "controlnet3Model" in request_data else get_controlnet_model(controlnet3_module)
         if "controlnet3Preprocess" in request_data and not request_data['controlnet3Preprocess']:
             controlnet3_module = "none"
         controlnet3_weight = request_data["controlnet3Weight"] if "controlnet3Weight" in request_data else 1

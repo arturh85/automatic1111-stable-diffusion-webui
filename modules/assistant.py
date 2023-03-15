@@ -22,8 +22,8 @@ from langchain.cache import SQLiteCache
 langchain.llm_cache = SQLiteCache(database_path=".langchain.db")
 
 
-news_api_key = os.environ["NEWS_API_KEY"]
-tmdb_bearer_token = os.environ["TMDB_API_KEY"]
+news_api_key = os.environ["NEWS_API_KEY"] if "NEWS_API_KEY" in os.environ else None
+tmdb_bearer_token = os.environ["TMDB_API_KEY"] if "TMDB_API_KEY" in os.environ else None
 
 
 @dataclass
